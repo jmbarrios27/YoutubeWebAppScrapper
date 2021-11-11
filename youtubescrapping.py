@@ -18,11 +18,17 @@ from textblob import TextBlob
 import gensim
 import itertools,collections
 import nltk
-
+import base64
+import xlsxwriter
+# VISUALIZACIÓN DE DATOS
+import matplotlib.pyplot as plt
+plt.style.use('ggplot')
+import seaborn as sns
 # WEB APP
 import streamlit as st
 import urllib.request as url
-
+from io import BytesIO
+from PIL import Image
 
 start_time = time.time()
 print('*************************************************************************')
@@ -127,26 +133,27 @@ def sentimiento(Polaridad):
         return 'POSITIVO'
 
 
-# PIDE EL link
-#urls = input('INGRESE EL LINK DEL VIDEO QUE DESEA EXTRAER COMENTARIOS:')
+# Crear botón de descarga de archivos.
+def to_excel(df):
+    output = BytesIO()
+    writer = pd.ExcelWriter(output, engine='xlsxwriter')
+    df.to_excel(writer, index=False, sheet_name='Sheet1')
+    workbook = writer.book
+    worksheet = writer.sheets['Sheet1']
+    format1 = workbook.add_format({'num_format': '0.00'}) 
+    worksheet.set_column('A:A', None, format1)  
+    writer.save()
+    processed_data = output.getvalue()
+    return processed_data
+
+############################# STREAMLIT ###############################3
+image = Image.open('./Images\ imagesweb/youtube.png')
+st.title("YOUTUBE SCRAPPER - TELERED")
+st.image()
+# Input
+url = input('Ingrese url:')
 
 def ScrapComment(url):
-    # so we can see the output side by side
-    st.set_page_config(layout="wide")
-
-# i made these just to hold the test_input box so
-# the rest of the output can match up below and we can
-# compare easier
-    col1,col2 = st.columns(2)
-    with col2:
-        url = st.text_input('URL link to scrape')
-
-        st.write('the link:')
-        st.write(url)
-
-    st.write('the link:')
-    st.write(url)
-    url = url
     option = webdriver.FirefoxOptions()
     option.add_argument("--headless")
     driver = webdriver.Firefox(executable_path=GeckoDriverManager().install(), options=option)
@@ -216,6 +223,8 @@ def ScrapComment(url):
      'FECHA_COMENTARIO': comment_date_list
     })
 
+    dataframe['LIKE'] = dataframe['LIKE'].astype('int')
+    print(type(dataframe['LIKE']))
     # ELIMIANNDO ESPACIONES ANTES Y DESPUES DE LOS TEXTOS
     dataframe['TITULO'] = dataframe['TITULO'].str.strip()
     dataframe['PUBLICADO_POR'] = dataframe['PUBLICADO_POR'].str.strip()
@@ -259,6 +268,7 @@ def ScrapComment(url):
 
     # POLARIDAD Y SENTIMIENTO
     dataframe['POLARIDAD'] = dataframe['COMENTARIO'].apply(spanish_sentiment)
+    dataframe['POLARIDAD'] = dataframe['POLARIDAD'].astype('float')
     dataframe['SENTIMIENTO'] = dataframe['POLARIDAD'].apply(sentimiento)
 
     positivo = dataframe[dataframe['SENTIMIENTO']=='POSITIVO']
@@ -268,20 +278,101 @@ def ScrapComment(url):
     dataframe.to_excel('D:\\ComentarioYoutube\\{0}'.format('comentarios_youtube' +'_'+clean_url +'_'+datestring + '.xlsx'), index=False)
     file_size = os.stat('D:\\ComentarioYoutube\\{0}'.format('comentarios_youtube' +'_'+clean_url +'_'+datestring + '.xlsx'))
     print("Size of file :", file_size.st_size, "bytes")
-    return dataframe, positivo, neutral, negativo, url
+    return dataframe, positivo, neutral, negativo
 
 
 # Extrayendo datos segregados por sentimiento y transofrmandolas a variables de entorno.
-DATA, POSITIVO, NEUTRAL, NEGATIVO ,urls= ScrapComment()
+DATA, POSITIVO, NEUTRAL, NEGATIVO = ScrapComment(url=url)
 
-##############################################################c###############################################################################
 
-def streamlitWebAPP(dataframe):
+def streamlitWebAPP(dataframe, positivo, negativo):
+    # Tabla
     st.dataframe(dataframe,1000,1000)
+    
+    # LIKES
+    #st.subheader('LIKES')
+    #likes = sns.countplot(x="LIKE" ,data=dataframe)
+    #st.pyplot(likes)
+    
+    st.bar_chart(dataframe['SENTIMIENTO'])
 
+    st.subheader('NUBE DE PALABRAS DE TODOS LOS COMENTARIOS')
+    # Wordcloud global 
+    allwords = ' '.join([fk for fk in dataframe.TEXTO_STOPWORD])
+    wordcloud = WordCloud(width=600, height=300, random_state=22, max_font_size=119, background_color='white').generate(allwords)
+    fig = plt.figure(figsize=(12,10))
+    plt.imshow(wordcloud, interpolation='bilinear')
+    plt.axis('off')
+    plt.show()
+    st.pyplot(fig)
+
+    st.subheader('NUBE DE PALABRAS DE COMENTARIOS POSITIVOS')
+     # Wordcloud positivo
+    allwords = ' '.join([fk for fk in positivo.TEXTO_STOPWORD])
+    wordcloud = WordCloud(width=600, height=300, random_state=22, max_font_size=119, background_color='green').generate(allwords)
+    fig_positivo = plt.figure(figsize=(12,10))
+    plt.imshow(wordcloud, interpolation='bilinear')
+    plt.axis('off')
+    plt.show()
+    st.pyplot(fig_positivo)
+
+    st.subheader('NUBE DE PALABRAS DE COMENTARIOS NEGATIVOS')
+     # Wordcloud negativo
+    allwords = ' '.join([fk for fk in negativo.TEXTO_STOPWORD])
+    wordcloud = WordCloud(width=600, height=300, random_state=22, max_font_size=119, background_color='red').generate(allwords)
+    fig_negativo = plt.figure(figsize=(12,10))
+    plt.imshow(wordcloud, interpolation='bilinear')
+    plt.axis('off')
+    plt.show()
+    st.pyplot(fig_negativo)
+
+    # Por columna
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.header("NUBE 1")
+        st.pyplot(fig, use_column_width=True)
+    with col2:
+        st.header("NUBE 2")
+        st.pyplot(fig_positivo, use_column_width=True)
+    with col3:
+        st.header("NUBE 3")
+        st.pyplot(fig_negativo, use_column_width=True)
+
+    # CONTEO DE TERMINOS
+    frequent_terms = dataframe['TEXTO_STOPWORD']
+    # Vamos a ver las 50 palabras más utilizadas en este dataset con tweets en español
+    all_words_counter_es = list(itertools.chain(*frequent_terms))
+    # Create counter
+    commonWordCount_es = collections.Counter(all_words_counter_es)
+
+    #Creando DataFrame para luego graficar las 50 palabras que más se utilizarón
+    final_word_count_es = pd.DataFrame(commonWordCount_es.most_common(10),
+                                columns=['palabras', 'conteo'])
+
+    fig_conteo_palabras, ax = plt.subplots(figsize=(12, 12))
+
+    #Plot para ver conteo de palabras más utilizadas en textos en español
+    final_word_count_es.sort_values(by='conteo').plot.barh(x='palabras',
+                        y='conteo',
+                        ax=ax,
+                        color="#33A1FF")
+
+    ax.set_title("CONTEO DE TERMINOS")
+    plt.figure(figsize=(20,20))
+    st.pyplot(fig_conteo_palabras)
+
+    # Habilitar botón para descargar el archivo
+    df_xlsx = to_excel(dataframe)
+    # exportación a excel
+    datestring = date.today().strftime('%Y-%m-%d')
+    clean_url = re.sub(r'https://www.youtube.com/watch', '', url)
+    clean_url = clean_url[3:]
+    st.download_button(label='📥 DESCARGAR ARCHIVO',
+                                data=df_xlsx ,
+                                file_name= 'comentarios_youtube' +'_'+clean_url +'_'+datestring + '.xlsx')
 if __name__ == "__main__":
-    ScrapComment(url=urls)
-    streamlitWebAPP(dataframe=DATA)
+    ScrapComment(url=url)
+    streamlitWebAPP(dataframe=DATA, positivo=POSITIVO, negativo=NEGATIVO)
 
 ############### TIEMPO DE EJECUCIÓN TOTAL DEL PROGRAMA ######################
 print('')
