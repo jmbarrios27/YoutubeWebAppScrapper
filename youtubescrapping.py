@@ -33,10 +33,13 @@ import plotly.graph_objs as go
 
 # WEB APP
 import streamlit as st
+st.set_option('deprecation.showPyplotGlobalUse', False)
 import urllib.request as url
 from io import BytesIO
 from PIL import Image
 import urllib.request as url
+st.set_option('deprecation.showPyplotGlobalUse', False)
+
 
 start_time = time.time()
 print('*************************************************************************')
@@ -379,16 +382,11 @@ def streamlitWebAPP(dataframe, positivo, negativo):
     #Bar Chart
     st.bar_chart(data=dataframe['LIKE'])
     # ----------------------------------------------------------------------------------------------------------------------------
-    try:
-        color_sentimiento = ['red', 'green', 'gray']
-        sentimiento_plot = sns.countplot(x='SENTIMIENTO',data=dataframe, palette=color_sentimiento)
-        plt.title('Sentimientos de Comentarios', color='black', size=18)
-        plt.ylabel('Conteo por sentimiento')
-        st.pyplot(sentimiento_plot)
-    except ValueError:
-        st.write('Insuficiente Cantidad de Palabras para Construir las nubes de palabras')
-    except AttributeError:
-        st.write('Insuficiente Cantidad de Palabras para Construir las nubes de palabras')
+    color_sentimiento = ['red', 'green', 'gray']
+    sns.countplot(x='SENTIMIENTO',data=dataframe)
+    plt.title('Sentimientos de Comentarios', color='black', size=18)
+    st.pyplot()
+    
     # ----------------------------------------------------------------------------------------------------------------------------
     # Wordcloud global 
     try:
