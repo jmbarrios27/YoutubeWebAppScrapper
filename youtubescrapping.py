@@ -204,7 +204,6 @@ def ScrapComment(url):
     option = webdriver.FirefoxOptions()
     option.add_argument("--headless")
     driver = webdriver.Firefox(executable_path=GeckoDriverManager().install(), options=option)
-    st.write(url)
     driver.get(url)
     prev_h = 0
     while True:
