@@ -37,7 +37,6 @@ import urllib.request as url
 from io import BytesIO
 from PIL import Image
 import urllib.request as url
-import urllib.request as url
 
 start_time = time.time()
 print('*************************************************************************')
@@ -156,42 +155,44 @@ def to_excel(df):
     return processed_data
 
 
-def conteo_palabras(dataframe):
-    # CONTEO DE TERMINOS
-    #Convertiremos a X Varias listas dentro de listas, para luego ser tokenizadas y stemmizadas (llevads a su raiz)
-    cleanWordsList_es = []
-    stop_words_es = set(nltk.corpus.stopwords.words("spanish"))
-    tokenizer_es = nltk.tokenize.RegexpTokenizer(r'\w+')
-    for par_es in dataframe["COMENTARIO"].values:
-        tmp_es = []
-        sentences_es = nltk.sent_tokenize(par_es)
-    for sent_es in sentences_es:
-        sent_es = sent_es.lower()
-        tokens_es = tokenizer_es.tokenize(sent_es)
-        filtered_words_es = [w_es.strip() for w_es in tokens_es if w_es not in stop_words_es and len(w_es) > 1]
-        tmp_es.extend(filtered_words_es)
-    cleanWordsList_es.append(tmp_es)
-    # Vamos a ver las 50 palabras más utilizadas en este dataset con tweets en español
-    all_words_counter_es = list(itertools.chain(*cleanWordsList_es))
-    # Create counter
-    commonWordCount_es = collections.Counter(all_words_counter_es)
+def conteo_palabras(dataframe, color):
+    try:
+        # CONTEO DE TERMINOS
+        #Convertiremos a X Varias listas dentro de listas, para luego ser tokenizadas y stemmizadas (llevads a su raiz)
+        cleanWordsList_es = []
+        stop_words_es = set(nltk.corpus.stopwords.words("spanish"))
+        tokenizer_es = nltk.tokenize.RegexpTokenizer(r'\w+')
+        for par_es in dataframe["COMENTARIO"].values:
+            tmp_es = []
+            sentences_es = nltk.sent_tokenize(par_es)
+        for sent_es in sentences_es:
+            sent_es = sent_es.lower()
+            tokens_es = tokenizer_es.tokenize(sent_es)
+            filtered_words_es = [w_es.strip() for w_es in tokens_es if w_es not in stop_words_es and len(w_es) > 1]
+            tmp_es.extend(filtered_words_es)
+        cleanWordsList_es.append(tmp_es)
+        # Vamos a ver las 50 palabras más utilizadas en este dataset con tweets en español
+        all_words_counter_es = list(itertools.chain(*cleanWordsList_es))
+        # Create counter
+        commonWordCount_es = collections.Counter(all_words_counter_es)
 
-    #Creando DataFrame para luego graficar las 50 palabras que más se utilizarón
-    final_word_count_es = pd.DataFrame(commonWordCount_es.most_common(50),
-                                columns=['palabras', 'conteo'])
+        #Creando DataFrame para luego graficar las 50 palabras que más se utilizarón
+        final_word_count_es = pd.DataFrame(commonWordCount_es.most_common(50),
+                                    columns=['palabras', 'conteo'])
 
-    fig_conteo_palabras, ax = plt.subplots(figsize=(12, 12))
+        fig_conteo_palabras, ax = plt.subplots(figsize=(12, 12))
 
-    #Plot para ver conteo de palabras más utilizadas en textos en español
-    final_word_count_es.sort_values(by='conteo').plot.barh(x='palabras',
-                        y='conteo',
-                        ax=ax,
-                        color="#33A1FF")
+        #Plot para ver conteo de palabras más utilizadas en textos en español
+        final_word_count_es.sort_values(by='conteo').plot.barh(x='palabras',
+                            y='conteo',
+                            ax=ax,
+                            color=color)
 
-    ax.set_title("CONTEO DE TERMINOS")
-    plt.figure(figsize=(40,40))
-    st.pyplot(fig_conteo_palabras)
-
+        ax.set_title("CONTEO DE TERMINOS")
+        plt.figure(figsize=(40,40))
+        st.pyplot(fig_conteo_palabras)
+    except UnboundLocalError:
+        st.write('No Existen Comentarios Suficientes para realizar este Gráfico')
 
 ############################# STREAMLIT ###############################3
 
@@ -278,29 +279,38 @@ def ScrapComment(url):
     dataframe['FECHA_POST'] = dataframe['FECHA_POST'].str.strip()
 
     # LIMPIENZA FECHA DE COMENTARIO
-    dataframe['FECHA_COMENTARIO'] = dataframe['FECHA_COMENTARIO'].apply(limpieza_fecha_comentario)
-    dataframe['FECHA_COMENTARIO'] = dataframe['FECHA_COMENTARIO'].str.strip()
+    try:
+        dataframe['FECHA_COMENTARIO'] = dataframe['FECHA_COMENTARIO'].apply(limpieza_fecha_comentario)
+        dataframe['FECHA_COMENTARIO'] = dataframe['FECHA_COMENTARIO'].str.strip()
+    except AttributeError: 
+        st.write('EL Post no Cuenta con comentarios, por favor intentar con otro.')
 
     dataframe['FECHA_EXTRACCION'] = today
 
-    dataframe['COMENTARIO'] = dataframe['COMENTARIO'].apply(text_clean)
-    dataframe['COMENTARIO'] = dataframe['COMENTARIO'].apply(remove_emoji)
-    dataframe['COMENTARIO'] = dataframe['COMENTARIO'].str.strip()
+    try:
+        dataframe['COMENTARIO'] = dataframe['COMENTARIO'].apply(text_clean)
+        dataframe['COMENTARIO'] = dataframe['COMENTARIO'].apply(remove_emoji)
+        dataframe['COMENTARIO'] = dataframe['COMENTARIO'].str.strip()
 
-    dataframe['TEXTO_STOPWORD'] = dataframe['COMENTARIO']
-    dataframe['TEXTO_STOPWORD'] = dataframe['TEXTO_STOPWORD'].apply(removeStopwords)
-    dataframe['TEXTO_STOPWORD'] = dataframe['TEXTO_STOPWORD'].str.strip()
+        dataframe['TEXTO_STOPWORD'] = dataframe['COMENTARIO']
+        dataframe['TEXTO_STOPWORD'] = dataframe['TEXTO_STOPWORD'].apply(removeStopwords)
+        dataframe['TEXTO_STOPWORD'] = dataframe['TEXTO_STOPWORD'].str.strip()
+    except AttributeError:
+        st.write('EL Post no Cuenta con comentarios, por favor intentar con otro.')
 
-    # LIMPIANDO AUTOR
-    dataframe['AUTOR'] = dataframe['AUTOR'].apply(text_clean)
-    dataframe['AUTOR'] = dataframe['AUTOR'].apply(remove_emoji)
-    dataframe['AUTOR'] = dataframe['AUTOR'].str.lstrip()
+    try:
+        # LIMPIANDO AUTOR
+        dataframe['AUTOR'] = dataframe['AUTOR'].apply(text_clean)
+        dataframe['AUTOR'] = dataframe['AUTOR'].apply(remove_emoji)
+        dataframe['AUTOR'] = dataframe['AUTOR'].str.lstrip()
 
 
-    # ELIMINANDO COMENTARIOS EN BLANCO
-    dataframe['LEN'] = dataframe['COMENTARIO'].str.len()
-    dataframe = dataframe[dataframe['LEN']>=1]
-    dataframe.drop(columns=['LEN'], inplace=True)
+        # ELIMINANDO COMENTARIOS EN BLANCO
+        dataframe['LEN'] = dataframe['COMENTARIO'].str.len()
+        dataframe = dataframe[dataframe['LEN']>=1]
+        dataframe.drop(columns=['LEN'], inplace=True)
+    except AttributeError:
+        st.write('EL Post no Cuenta con comentarios, por favor intentar con otro.')
 
     # exportación a excel
     datestring = date.today().strftime('%Y-%m-%d')
@@ -314,13 +324,16 @@ def ScrapComment(url):
     dataframe = dataframe[cols]
 
     # POLARIDAD Y SENTIMIENTO
-    dataframe['POLARIDAD'] = dataframe['COMENTARIO'].apply(spanish_sentiment)
-    dataframe['POLARIDAD'] = dataframe['POLARIDAD'].astype('float')
-    dataframe['SENTIMIENTO'] = dataframe['POLARIDAD'].apply(sentimiento)
+    try:
+        dataframe['POLARIDAD'] = dataframe['COMENTARIO'].apply(spanish_sentiment)
+        dataframe['POLARIDAD'] = dataframe['POLARIDAD'].astype('float')
+        dataframe['SENTIMIENTO'] = dataframe['POLARIDAD'].apply(sentimiento)
 
-    positivo = dataframe[dataframe['SENTIMIENTO']=='POSITIVO']
-    negativo = dataframe[dataframe['SENTIMIENTO']=='NEGATIVO']
-    neutral = dataframe[dataframe['SENTIMIENTO']=='NEUTRAL']
+        positivo = dataframe[dataframe['SENTIMIENTO']=='POSITIVO']
+        negativo = dataframe[dataframe['SENTIMIENTO']=='NEGATIVO']
+        neutral = dataframe[dataframe['SENTIMIENTO']=='NEUTRAL']
+    except AttributeError:
+        st.write('EL Post no Cuenta con comentarios, por favor intentar con otro.')
 
     dataframe.to_excel('D:\\ComentarioYoutube\\{0}'.format('comentarios_youtube' +'_'+clean_url +'_'+datestring + '.xlsx'), index=False)
     file_size = os.stat('D:\\ComentarioYoutube\\{0}'.format('comentarios_youtube' +'_'+clean_url +'_'+datestring + '.xlsx'))
@@ -333,9 +346,19 @@ DATA, POSITIVO, NEUTRAL, NEGATIVO = ScrapComment(url=url)
 
 
 def streamlitWebAPP(dataframe, positivo, negativo):
+    try:
+        # Titulo de video
+        titulo_video = dataframe['TITULO']
+        titulo_video = pd.DataFrame(titulo_video)
+        titulo_video = titulo_video.iloc[0]['TITULO']
+        st.subheader('TITULO DEL VIDEO', titulo_video)
+    except IndexError:
+        st.write('EL Post no Cuenta con comentarios, por favor intentar con otro.')
+    # ----------------------------------------------------------------------------------------------------------------------------
     # Tabla
     data_table = dataframe.drop(columns=['LLAVE_VIDEO', 'TITULO'])
-    st.dataframe(data_table,10000,10000)
+    st.dataframe(data_table.head(15),10000,10000)
+    st.write('Número de Comentarios extraidos: ', len(data_table))
     
     # ----------------------------------------------------------------------------------------------------------------------------
     # Habilitar botón para descargar el archivo
@@ -356,49 +379,67 @@ def streamlitWebAPP(dataframe, positivo, negativo):
     #Bar Chart
     st.bar_chart(data=dataframe['LIKE'])
     # ----------------------------------------------------------------------------------------------------------------------------
-   
+    try:
+        color_sentimiento = ['red', 'green', 'gray']
+        sentimiento_plot = sns.countplot(x='SENTIMIENTO',data=dataframe, palette=color_sentimiento)
+        plt.title('Sentimientos de Comentarios', color='black', size=18)
+        plt.ylabel('Conteo por sentimiento')
+        st.pyplot(sentimiento_plot)
+    except ValueError:
+        st.write('Insuficiente Cantidad de Palabras para Construir las nubes de palabras')
+    except AttributeError:
+        st.write('Insuficiente Cantidad de Palabras para Construir las nubes de palabras')
     # ----------------------------------------------------------------------------------------------------------------------------
     # Wordcloud global 
-    allwords = ' '.join([fk for fk in dataframe.TEXTO_STOPWORD])
-    wordcloud = WordCloud(width=600, height=300, random_state=22, max_font_size=119, background_color='white').generate(allwords)
-    fig = plt.figure(figsize=(12,10))
-    plt.imshow(wordcloud, interpolation='bilinear')
-    plt.axis('off')
+    try:
+        allwords_todo = ' '.join([fk for fk in dataframe.TEXTO_STOPWORD])
+        wordcloud_todo = WordCloud(width=600, height=300, random_state=22, max_font_size=119, background_color='white').generate(allwords_todo)
+        fig_todo = plt.figure(figsize=(12,10))
+        plt.imshow(wordcloud_todo, interpolation='bilinear')
+        plt.axis('off')
 
-     # Wordcloud positivo
-    allwords = ' '.join([fk for fk in positivo.TEXTO_STOPWORD])
-    wordcloud = WordCloud(width=600, height=300, random_state=22, max_font_size=119, background_color='green').generate(allwords)
-    fig_positivo = plt.figure(figsize=(12,10))
-    plt.imshow(wordcloud, interpolation='bilinear')
-    plt.axis('off')
+        # Wordcloud positivo
+        allwords_positivo = ' '.join([fk for fk in positivo.TEXTO_STOPWORD])
+        wordcloud_positivo = WordCloud(width=600, height=300, random_state=22, max_font_size=119, background_color='green').generate(allwords_positivo)
+        fig_positivo = plt.figure(figsize=(12,10))
+        plt.imshow(wordcloud_positivo, interpolation='bilinear')
+        plt.axis('off')
 
-     # Wordcloud negativo
-    allwords = ' '.join([fk for fk in negativo.TEXTO_STOPWORD])
-    wordcloud = WordCloud(width=600, height=300, random_state=22, max_font_size=119, background_color='red').generate(allwords)
-    fig_negativo = plt.figure(figsize=(12,10))
-    plt.imshow(wordcloud, interpolation='bilinear')
-    plt.axis('off')
+        # Wordcloud negativo
+        allwords_negativo = ' '.join([fk for fk in negativo.TEXTO_STOPWORD])
+        wordcloud_negativo = WordCloud(width=600, height=300, random_state=22, max_font_size=119, background_color='red').generate(allwords_negativo)
+        fig_negativo = plt.figure(figsize=(12,10))
+        plt.imshow(wordcloud_negativo, interpolation='bilinear')
+        plt.axis('off')
 
-    # Por columna
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.header("NUBE 1")
-        st.pyplot(fig, use_column_width=True)
-    with col2:
-        st.header("NUBE 2")
-        st.pyplot(fig_positivo, use_column_width=True)
-    with col3:
-        st.header("NUBE 3")
-        st.pyplot(fig_negativo, use_column_width=True)
-
+        # Por columna
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.header("NUBE 1")
+            st.pyplot(fig_todo, use_column_width=True)
+        with col2:
+            st.header("NUBE 2")
+            st.pyplot(fig_positivo, use_column_width=True)
+        with col3:
+            st.header("NUBE 3")
+            st.pyplot(fig_negativo, use_column_width=True)
+    except ValueError:
+            st.write('Insuficiente Cantidad de Palabras para Construir las nubes de palabras')
+    except AttributeError:
+            st.write('Insuficiente Cantidad de Palabras para Construir las nubes de palabras')
     # ----------------------------------------------------------------------------------------------------------------------------
-    # conteo de palabras
-    st.subheader('NÚMERO DE PALABRAS PARA TODOS LOS COMENTARIOS')
-    conteo_palabras(dataframe=dataframe)
-    st.subheader('NÚMERO DE PALABRAS PARA TODOS LOS COMENTARIOS POSITIVOS')
-    conteo_palabras(dataframe=positivo)
-    st.subheader('NÚMERO DE PALABRAS PARA TODOS LOS COMENTARIOS NEGATIVOS')
-    conteo_palabras(dataframe=negativo)
+    try:
+        # conteo de palabras
+        st.subheader('NÚMERO DE PALABRAS PARA TODOS LOS COMENTARIOS')
+        conteo_palabras(dataframe=dataframe, color="#33A1FF")
+        st.subheader('NÚMERO DE PALABRAS PARA TODOS LOS COMENTARIOS POSITIVOS')
+        conteo_palabras(dataframe=positivo, color='green')
+        st.subheader('NÚMERO DE PALABRAS PARA TODOS LOS COMENTARIOS NEGATIVOS')
+        conteo_palabras(dataframe=negativo, color='red')
+    except ValueError:
+            st.write('Insuficiente Cantidad de Palabras para Construir las nubes de palabras')
+    except AttributeError:
+            st.write('Insuficiente Cantidad de Palabras para Construir las nubes de palabras')
     # -----------------------------------------------------------------------------------------------------------
 
     
