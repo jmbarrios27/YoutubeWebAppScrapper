@@ -46,7 +46,7 @@ from io import BytesIO
 from PIL import Image
 import urllib.request as url
 import numpy as np
-
+import requests as r
 
 start_time = time.time()
 print('*************************************************************************')
@@ -232,7 +232,7 @@ def termFrequencyVocab(data,tipo_sentimiento):
         }
 
     lr_CV = GridSearchCV(lr, param_grid = [lr2_param], cv = kfold, scoring = 'roc_auc', n_jobs = 1, verbose = 1)
-    lr_CV.fit(tfidf, data['NUMERIC_SENTIMENT']) # Cambiar
+    lr_CV.fit(train_tv, data['NUMERIC_SENTIMENT']) # Cambiar
     print(lr_CV.best_params_)
     logi_best = lr_CV.best_estimator_
     # Extract the coefficients from the best model Logistic Regression and sort them by index.
@@ -273,16 +273,24 @@ def getSentiment(polaridad):
             st.write('No existen Comentarios')
     except AttributeError:
             st.write('No existen comenatarios')
-
-
-
     
 ############################# STREAMLIT ###############################3
 
 st.title("YOUTUBE SCRAPPER - TELERED")
-# Input
-url = input('Ingrese url:')
 
+
+# Add a selectbox to the sidebar:
+add_selectbox = st.sidebar.selectbox(
+    'Método de Scrapping',
+    ('Link de Video','Archivo Excel')
+)
+
+url = st.text_area('Enter text here...')
+print('esta es la url que busco',url)
+print('Tipo de dato',type(url))
+st.write('Link del Video:', url)
+# Input
+url = input('ingrese link')
 
 def ScrapComment(url):
     option = webdriver.FirefoxOptions()
