@@ -2,6 +2,9 @@
 from datetime import date
 from sys import path
 from nltk import data
+from nltk.featstruct import retract_bindings
+from numpy.core.fromnumeric import size
+from pandas.core.frame import DataFrame
 from selenium import webdriver
 from webdriver_manager.firefox import GeckoDriverManager
 from bs4 import BeautifulSoup
@@ -22,6 +25,10 @@ import itertools,collections
 import nltk
 import base64
 import xlsxwriter
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.cluster import MiniBatchKMeans
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import GridSearchCV,KFold, StratifiedKFold
 
 # VISUALIZACIÓN DE DATOS
 import matplotlib.pyplot as plt
@@ -38,7 +45,7 @@ import urllib.request as url
 from io import BytesIO
 from PIL import Image
 import urllib.request as url
-st.set_option('deprecation.showPyplotGlobalUse', False)
+import numpy as np
 
 
 start_time = time.time()
@@ -197,6 +204,79 @@ def conteo_palabras(dataframe, color):
     except UnboundLocalError:
         st.write('No Existen Comentarios Suficientes para realizar este Gráfico')
 
+
+def termFrequencyVocab(data,tipo_sentimiento):
+    try:
+        #Fitting TF-IDF
+        tfidf = TfidfVectorizer()
+        train_tv = tfidf.fit_transform(data['TEXTO_STOPWORD'])
+        vocab = tfidf.get_feature_names()
+        st.write(f'Vocabulario de Palabaras para textos en datos {tipo_sentimiento}')
+        st.write(vocab)
+    except ValueError:
+            st.write('No existen Comentarios')
+    except AttributeError:
+            st.write('No existen comenatarios')
+    
+    # Kfold split.
+    kfold = StratifiedKFold(n_splits = 2, random_state = 2018 )
+
+    # Aplicando Regresion logistica para extraer coeficientes.
+    lr = LogisticRegression()
+
+    lr2_param = {
+        'penalty':['l2'],
+        'dual':[False],
+        'C':[6],
+        'class_weight':[{1:1}],
+        }
+
+    lr_CV = GridSearchCV(lr, param_grid = [lr2_param], cv = kfold, scoring = 'roc_auc', n_jobs = 1, verbose = 1)
+    lr_CV.fit(tfidf, data['NUMERIC_SENTIMENT']) # Cambiar
+    print(lr_CV.best_params_)
+    logi_best = lr_CV.best_estimator_
+    # Extract the coefficients from the best model Logistic Regression and sort them by index.
+    coefficients = logi_best.coef_
+    index = coefficients.argsort()
+    # Extract the feature names.
+    feature_names = np.array(tfidf.get_feature_names())
+    # feature names: Smallest 30 + largest 30.
+    feature_names_comb = list(feature_names[index][0][:30]) + list(feature_names[index][0][-31::1])
+    # coefficients magnitude: Smallest 30 + largest 30.
+    index_comb = list(coefficients[0][index[0][:30]]) + list(coefficients[0][index[0][-31::1]])
+    # Make sure the x-axis be the number from 0 to the length of the features selected not the feature names.
+    # Once the bar is plotted, the features are placed as ticks.
+    plt.figure(figsize=(18,8))
+    barlist = plt.bar(list(i for i in range(61)), index_comb)
+    plt.xticks(list(i for i in range(61)),feature_names_comb,rotation=75,size=15)
+    plt.ylabel('Magnitud de coeficientes',size=20)
+    plt.xlabel('atributos',size=20)
+    plt.xlabel('PALABRAS RELACIONADAS A TWEETS POSITIVOS O NEGATIVOS',size=20)
+
+
+    # color the first smallest 30 bars red
+    for i in range(30):
+        barlist[i].set_color('red')
+
+    st.pyplot()
+
+
+
+# Extrayendo sentimiento
+def getSentiment(polaridad):
+    try:
+        if polaridad <= 0.2:
+            return 0
+        else:
+            return 1
+    except ValueError:
+            st.write('No existen Comentarios')
+    except AttributeError:
+            st.write('No existen comenatarios')
+
+
+
+    
 ############################# STREAMLIT ###############################3
 
 st.title("YOUTUBE SCRAPPER - TELERED")
@@ -338,6 +418,11 @@ def ScrapComment(url):
     except AttributeError:
         st.write('EL Post no Cuenta con comentarios, por favor intentar con otro.')
 
+    try:
+        dataframe['NUMERIC_SENTIMENT'] = dataframe['POLARIDAD'].apply(getSentiment)
+    except AttributeError:
+        st.write('EL Post no Cuenta con comentarios, por favor intentar con otro.')
+
     dataframe.to_excel('D:\\ComentarioYoutube\\{0}'.format('comentarios_youtube' +'_'+clean_url +'_'+datestring + '.xlsx'), index=False)
     file_size = os.stat('D:\\ComentarioYoutube\\{0}'.format('comentarios_youtube' +'_'+clean_url +'_'+datestring + '.xlsx'))
     print("Size of file :", file_size.st_size, "bytes")
@@ -348,7 +433,7 @@ def ScrapComment(url):
 DATA, POSITIVO, NEUTRAL, NEGATIVO = ScrapComment(url=url)
 
 
-def streamlitWebAPP(dataframe, positivo, negativo):
+def streamlitWebAPP(dataframe, positivo, negativo, neutral):
     try:
         # Titulo de video
         titulo_video = dataframe['TITULO']
@@ -358,11 +443,55 @@ def streamlitWebAPP(dataframe, positivo, negativo):
     except IndexError:
         st.write('EL Post no Cuenta con comentarios, por favor intentar con otro.')
     # ----------------------------------------------------------------------------------------------------------------------------
-    # Tabla
-    data_table = dataframe.drop(columns=['LLAVE_VIDEO', 'TITULO'])
-    st.dataframe(data_table.head(15),10000,10000)
-    st.write('Número de Comentarios extraidos: ', len(data_table))
+    # Tabla de todos los datos
+    try:
+        data_table = dataframe.drop(columns=['LLAVE_VIDEO', 'TITULO'])
+        st.dataframe(data_table.head(15),10000,10000)
+        st.write('Número de Comentarios extraidos: ', len(data_table))
+    except ValueError:
+            st.write('No existen Comentarios')
+    except AttributeError:
+            st.write('No existen comenatarios')
+
+    # Tabla de todos los datos positivos
+    try:
+        positivo_table = positivo.drop(columns=['LLAVE_VIDEO', 'TITULO'])
+        st.dataframe(positivo_table.head(15),10000,10000)
+        st.write('Número de Comentarios positivos extraidos: ', len(positivo_table))
+    except ValueError:
+            st.write('No existen Comentarios positivos')
+    except AttributeError:
+            st.write('No existen comenatarios positivos')
+
+      # Tabla de todos los datos negativos
+    try:
+        negativo_table = negativo.drop(columns=['LLAVE_VIDEO', 'TITULO'])
+        st.dataframe(negativo_table.head(15),10000,10000)
+        st.write('Número de Comentarios negativo extraidos: ', len(negativo_table))
+    except ValueError:
+            st.write('No existen Comentarios negativos')
+    except AttributeError:
+            st.write('No existen comenatarios negativos')
+
+       # Tabla de todos los datos neutrakes
+    try:
+        neutral_table = neutral.drop(columns=['LLAVE_VIDEO', 'TITULO'])
+        st.dataframe(neutral_table.head(15),10000,10000)
+        st.write('Número de Comentarios neutrales extraidos: ', len(neutral_table))
+    except ValueError:
+            st.write('No existen Comentarios neutrales')
+    except AttributeError:
+            st.write('No existen comenatarios neutrales')
     
+    # ----------------------------------------------------------------------------------------------------------------------------
+    try:
+        st.write('Comentario con Más Likes')
+        st.write(max(dataframe.LIKE))
+    except ValueError:
+            st.write('Ningún comentario tienen Like')
+    except AttributeError:
+            st.write('Ningún Comentario tiene  Like')
+
     # ----------------------------------------------------------------------------------------------------------------------------
     # Habilitar botón para descargar el archivo
     df_xlsx = to_excel(dataframe)
@@ -370,7 +499,7 @@ def streamlitWebAPP(dataframe, positivo, negativo):
     datestring = date.today().strftime('%Y-%m-%d')
     clean_url = re.sub(r'https://www.youtube.com/watch', '', url)
     clean_url = clean_url[3:]
-    st.download_button(label='📥 DESCARGAR ARCHIVO',
+    st.download_button(label='📥 DESCARGAR ARCHIVO COMPLETO',
                                 data=df_xlsx ,
                                 file_name= 'comentarios_youtube' +'_'+clean_url +'_'+datestring + '.xlsx')
     # ----------------------------------------------------------------------------------------------------------------------------
@@ -381,6 +510,15 @@ def streamlitWebAPP(dataframe, positivo, negativo):
     st.subheader('NÚMERO DE LIKES DE COMENTARIOS')
     #Bar Chart
     st.bar_chart(data=dataframe['LIKE'])
+    # ----------------------------------------------------------------------------------------------------------------------------
+    # Likes por comentario
+    like_barplot = sns.barplot(x="AUTOR", y="LIKE", data=dataframe)
+    like_barplot.set_xlabel('Usuario de Youtube',fontsize=30)
+    plt.title('LIKES', color='black', size=18)
+    plt.xlabel('Usuario Youtube')
+    plt.xticks(rotation=90)
+    st.pyplot()
+
     # ----------------------------------------------------------------------------------------------------------------------------
     color_sentimiento = ['red', 'green', 'gray']
     sns.countplot(x='SENTIMIENTO',data=dataframe)
@@ -398,14 +536,14 @@ def streamlitWebAPP(dataframe, positivo, negativo):
 
         # Wordcloud positivo
         allwords_positivo = ' '.join([fk for fk in positivo.TEXTO_STOPWORD])
-        wordcloud_positivo = WordCloud(width=600, height=300, random_state=22, max_font_size=119, background_color='green').generate(allwords_positivo)
+        wordcloud_positivo = WordCloud(width=600, height=300, random_state=22, max_font_size=119, background_color='darkgreen').generate(allwords_positivo)
         fig_positivo = plt.figure(figsize=(12,10))
         plt.imshow(wordcloud_positivo, interpolation='bilinear')
         plt.axis('off')
 
         # Wordcloud negativo
         allwords_negativo = ' '.join([fk for fk in negativo.TEXTO_STOPWORD])
-        wordcloud_negativo = WordCloud(width=600, height=300, random_state=22, max_font_size=119, background_color='red').generate(allwords_negativo)
+        wordcloud_negativo = WordCloud(width=600, height=300, random_state=22, max_font_size=119, background_color='darkred').generate(allwords_negativo)
         fig_negativo = plt.figure(figsize=(12,10))
         plt.imshow(wordcloud_negativo, interpolation='bilinear')
         plt.axis('off')
@@ -439,11 +577,14 @@ def streamlitWebAPP(dataframe, positivo, negativo):
     except AttributeError:
             st.write('Insuficiente Cantidad de Palabras para Construir las nubes de palabras')
     # -----------------------------------------------------------------------------------------------------------
-
+    termFrequencyVocab(data=dataframe, tipo_sentimiento='totales')
+    termFrequencyVocab(data=positivo, tipo_sentimiento='positivo')
+    termFrequencyVocab(data=negativo, tipo_sentimiento='negativo')
+    termFrequencyVocab(data=neutral, tipo_sentimiento='neutrales')
     
 if __name__ == "__main__":
     ScrapComment(url=url)
-    streamlitWebAPP(dataframe=DATA, positivo=POSITIVO, negativo=NEGATIVO)
+    streamlitWebAPP(dataframe=DATA, positivo=POSITIVO, negativo=NEGATIVO, neutral=NEUTRAL)
 
 ############### TIEMPO DE EJECUCIÓN TOTAL DEL PROGRAMA ######################
 print('')
