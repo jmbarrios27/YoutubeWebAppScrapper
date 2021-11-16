@@ -47,7 +47,9 @@ from PIL import Image
 import urllib.request as url
 import numpy as np
 import requests as r
+from streamlit_player import st_player
 
+st.cache(suppress_st_warning=True)
 start_time = time.time()
 print('*************************************************************************')
 print('INICIANDO EJECUCIÓN')
@@ -185,7 +187,6 @@ def conteo_palabras(dataframe, color):
         all_words_counter_es = list(itertools.chain(*cleanWordsList_es))
         # Create counter
         commonWordCount_es = collections.Counter(all_words_counter_es)
-        st.write(commonWordCount_es.most_common(100))
         #Creando DataFrame para luego graficar las 50 palabras que más se utilizarón
         final_word_count_es = pd.DataFrame(commonWordCount_es.most_common(50),
                                     columns=['palabras', 'conteo'])
@@ -234,7 +235,20 @@ def getSentiment(polaridad):
             st.write('No existen Comentarios')
     except AttributeError:
             st.write('No existen comenatarios')
-    
+
+
+def text_dist(data, col):
+    try:
+        # DISTRIBUCION DE TEXTOS BASADO EN SUBJETIVIDAD
+        st.write('Distrubución de textos:', data)
+        plt.figure(figsize=(12,10))
+        sns.displot(data=data, x="CARACTERES", col=col, hue='SENTIMIENTO', kind='kde')
+        plt.show()
+        st.pyplot()
+    except ValueError:
+            st.write('Insuficiente Cantidad de Palabras para generar Gráfico de Distribución de textos ', data)
+    except AttributeError:
+            st.write('Insuficiente Cantidad de Palabras para generar Gráfico de Distribución de textos ', data)
 ############################# STREAMLIT ###############################3
 
 st.title("YOUTUBE SCRAPPER - TELERED")
@@ -246,10 +260,28 @@ add_selectbox = st.sidebar.selectbox(
     ('Link de Video','Archivo Excel')
 )
 
-# Input
-url = st.text_input("Escriba el Link de YouTube:")
-st.write(url)
-#url = input('ingrese link:')
+# -----------------------------------------------------------------------
+def input_url():
+    try:
+        url = st.text_input("Escriba el Link de YouTube:")
+        count = 0
+        while True:
+            if url =='':
+                url
+            elif url.startswith('https://www.youtube.com/watch?v=') == False:
+                url
+            else:
+                url.startswith('https://www.youtube.com/watch?v=')
+                st.write('Link con fomato correcto')
+                break
+    except OSError:
+        st.write('Colocar url con formato correcto')
+    return url
+
+url = input_url()
+st.write('Link del video extraido: ',url)
+st_player(url)
+
 
 def ScrapComment(url):
     option = webdriver.FirefoxOptions()
@@ -341,6 +373,8 @@ def ScrapComment(url):
         dataframe['COMENTARIO'] = dataframe['COMENTARIO'].apply(text_clean)
         dataframe['COMENTARIO'] = dataframe['COMENTARIO'].apply(remove_emoji)
         dataframe['COMENTARIO'] = dataframe['COMENTARIO'].str.strip()
+        dataframe['CARACTERES'] = dataframe['COMENTARIO'].apply(lambda x: len(x))
+        dataframe['CARACTERES'] = dataframe['CARACTERES'].astype('int')
 
         dataframe['TEXTO_STOPWORD'] = dataframe['COMENTARIO']
         dataframe['TEXTO_STOPWORD'] = dataframe['TEXTO_STOPWORD'].apply(removeStopwords)
@@ -549,7 +583,8 @@ def streamlitWebAPP(dataframe, positivo, negativo, neutral):
     termFrequencyVocab(data=positivo, tipo_sentimiento='positivo')
     termFrequencyVocab(data=negativo, tipo_sentimiento='negativo')
     termFrequencyVocab(data=neutral, tipo_sentimiento='neutrales')
-    
+    # -----------------------------------------------------------------------------------------------------------
+    text_dist(data=dataframe, col='SENTIMIENTO')
 if __name__ == "__main__":
     ScrapComment(url=url)
     streamlitWebAPP(dataframe=DATA, positivo=POSITIVO, negativo=NEGATIVO, neutral=NEUTRAL)
