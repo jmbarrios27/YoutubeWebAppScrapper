@@ -237,12 +237,12 @@ def getSentiment(polaridad):
             st.write('No existen comenatarios')
 
 
-def text_dist(data, col):
+def text_dist(data):
     try:
         # DISTRIBUCION DE TEXTOS BASADO EN SUBJETIVIDAD
-        st.write('Distrubución de textos:', data)
+        st.write('Distrubución de textos:')
         plt.figure(figsize=(12,10))
-        sns.displot(data=data, x="CARACTERES", col=col, hue='SENTIMIENTO', kind='kde')
+        sns.barplot(data=data, x="AUTOR", y='CARACTERES', palette='magma')
         plt.show()
         st.pyplot()
     except ValueError:
@@ -584,7 +584,10 @@ def streamlitWebAPP(dataframe, positivo, negativo, neutral):
     termFrequencyVocab(data=negativo, tipo_sentimiento='negativo')
     termFrequencyVocab(data=neutral, tipo_sentimiento='neutrales')
     # -----------------------------------------------------------------------------------------------------------
-    text_dist(data=dataframe, col='SENTIMIENTO')
+    text_dist(data=dataframe)
+    text_dist(data=positivo)
+    text_dist(data=negativo)
+    text_dist(data=neutral)
 if __name__ == "__main__":
     ScrapComment(url=url)
     streamlitWebAPP(dataframe=DATA, positivo=POSITIVO, negativo=NEGATIVO, neutral=NEUTRAL)
