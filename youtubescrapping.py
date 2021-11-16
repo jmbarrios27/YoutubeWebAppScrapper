@@ -185,13 +185,16 @@ def conteo_palabras(dataframe, color):
         all_words_counter_es = list(itertools.chain(*cleanWordsList_es))
         # Create counter
         commonWordCount_es = collections.Counter(all_words_counter_es)
-
+        st.write(commonWordCount_es.most_common(100))
         #Creando DataFrame para luego graficar las 50 palabras que más se utilizarón
         final_word_count_es = pd.DataFrame(commonWordCount_es.most_common(50),
                                     columns=['palabras', 'conteo'])
 
+        # -----------------------------------
+        # -------------------------------------------
         fig_conteo_palabras, ax = plt.subplots(figsize=(12, 12))
 
+        # final_word_count_es
         #Plot para ver conteo de palabras más utilizadas en textos en español
         final_word_count_es.sort_values(by='conteo').plot.barh(x='palabras',
                             y='conteo',
@@ -201,9 +204,10 @@ def conteo_palabras(dataframe, color):
         ax.set_title("CONTEO DE TERMINOS")
         plt.figure(figsize=(40,40))
         st.pyplot(fig_conteo_palabras)
+
     except UnboundLocalError:
         st.write('No Existen Comentarios Suficientes para realizar este Gráfico')
-
+    
 
 def termFrequencyVocab(data,tipo_sentimiento):
     try:
@@ -218,49 +222,6 @@ def termFrequencyVocab(data,tipo_sentimiento):
     except AttributeError:
             st.write('No existen comenatarios')
     
-    # Kfold split.
-    kfold = StratifiedKFold(n_splits = 2, random_state = 2018 )
-
-    # Aplicando Regresion logistica para extraer coeficientes.
-    lr = LogisticRegression()
-
-    lr2_param = {
-        'penalty':['l2'],
-        'dual':[False],
-        'C':[6],
-        'class_weight':[{1:1}],
-        }
-
-    lr_CV = GridSearchCV(lr, param_grid = [lr2_param], cv = kfold, scoring = 'roc_auc', n_jobs = 1, verbose = 1)
-    lr_CV.fit(train_tv, data['NUMERIC_SENTIMENT']) # Cambiar
-    print(lr_CV.best_params_)
-    logi_best = lr_CV.best_estimator_
-    # Extract the coefficients from the best model Logistic Regression and sort them by index.
-    coefficients = logi_best.coef_
-    index = coefficients.argsort()
-    # Extract the feature names.
-    feature_names = np.array(tfidf.get_feature_names())
-    # feature names: Smallest 30 + largest 30.
-    feature_names_comb = list(feature_names[index][0][:30]) + list(feature_names[index][0][-31::1])
-    # coefficients magnitude: Smallest 30 + largest 30.
-    index_comb = list(coefficients[0][index[0][:30]]) + list(coefficients[0][index[0][-31::1]])
-    # Make sure the x-axis be the number from 0 to the length of the features selected not the feature names.
-    # Once the bar is plotted, the features are placed as ticks.
-    plt.figure(figsize=(18,8))
-    barlist = plt.bar(list(i for i in range(61)), index_comb)
-    plt.xticks(list(i for i in range(61)),feature_names_comb,rotation=75,size=15)
-    plt.ylabel('Magnitud de coeficientes',size=20)
-    plt.xlabel('atributos',size=20)
-    plt.xlabel('PALABRAS RELACIONADAS A TWEETS POSITIVOS O NEGATIVOS',size=20)
-
-
-    # color the first smallest 30 bars red
-    for i in range(30):
-        barlist[i].set_color('red')
-
-    st.pyplot()
-
-
 
 # Extrayendo sentimiento
 def getSentiment(polaridad):
@@ -285,12 +246,10 @@ add_selectbox = st.sidebar.selectbox(
     ('Link de Video','Archivo Excel')
 )
 
-url = st.text_area('Enter text here...')
-print('esta es la url que busco',url)
-print('Tipo de dato',type(url))
-st.write('Link del Video:', url)
 # Input
-url = input('ingrese link')
+url = st.text_input("Escriba el Link de YouTube:")
+st.write(url)
+#url = input('ingrese link:')
 
 def ScrapComment(url):
     option = webdriver.FirefoxOptions()
@@ -447,7 +406,8 @@ def streamlitWebAPP(dataframe, positivo, negativo, neutral):
         titulo_video = dataframe['TITULO']
         titulo_video = pd.DataFrame(titulo_video)
         titulo_video = titulo_video.iloc[0]['TITULO']
-        st.subheader('TITULO DEL VIDEO', titulo_video)
+        st.subheader('TITULO DEL VIDEO')
+        st.write(titulo_video)
     except IndexError:
         st.write('EL Post no Cuenta con comentarios, por favor intentar con otro.')
     # ----------------------------------------------------------------------------------------------------------------------------
@@ -521,7 +481,7 @@ def streamlitWebAPP(dataframe, positivo, negativo, neutral):
     # ----------------------------------------------------------------------------------------------------------------------------
     # Likes por comentario
     like_barplot = sns.barplot(x="AUTOR", y="LIKE", data=dataframe)
-    like_barplot.set_xlabel('Usuario de Youtube',fontsize=30)
+    like_barplot.set_xlabel('Usuario de Youtube',fontsize=15)
     plt.title('LIKES', color='black', size=18)
     plt.xlabel('Usuario Youtube')
     plt.xticks(rotation=90)
@@ -537,7 +497,7 @@ def streamlitWebAPP(dataframe, positivo, negativo, neutral):
     # Wordcloud global 
     try:
         allwords_todo = ' '.join([fk for fk in dataframe.TEXTO_STOPWORD])
-        wordcloud_todo = WordCloud(width=600, height=300, random_state=22, max_font_size=119, background_color='white').generate(allwords_todo)
+        wordcloud_todo = WordCloud(width=600, height=300, random_state=22, max_font_size=119, background_color='navy').generate(allwords_todo)
         fig_todo = plt.figure(figsize=(12,10))
         plt.imshow(wordcloud_todo, interpolation='bilinear')
         plt.axis('off')
