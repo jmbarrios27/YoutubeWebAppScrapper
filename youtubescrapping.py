@@ -25,7 +25,7 @@ import itertools,collections
 import nltk
 import base64
 import xlsxwriter
-from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_extraction.text import TfidfVectorizer,  CountVectorizer
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import GridSearchCV,KFold, StratifiedKFold
@@ -242,17 +242,56 @@ def text_dist(data):
         # DISTRIBUCION DE TEXTOS BASADO EN SUBJETIVIDAD
         st.write('Distrubución de textos:')
         plt.figure(figsize=(12,10))
-        sns.barplot(data=data, x="AUTOR", y='CARACTERES', palette='magma')
+        sns.barplot(data=data, x="AUTOR", y='CARACTERES', palette='bright')
+        plt.xticks(rotation=90)
         plt.show()
         st.pyplot()
     except ValueError:
-            st.write('Insuficiente Cantidad de Palabras para generar Gráfico de Distribución de textos ', data)
+            st.write('Insuficiente Cantidad de Palabras para generar Gráfico de Distribución de textos ')
     except AttributeError:
-            st.write('Insuficiente Cantidad de Palabras para generar Gráfico de Distribución de textos ', data)
+            st.write('Insuficiente Cantidad de Palabras para generar Gráfico de Distribución de textos ')
+
+
+
+def get_top_text_ngrams(corpus, n, g, dataframe):
+    vec = CountVectorizer(ngram_range=(g, g)).fit(corpus)
+    bag_of_words = vec.transform(corpus)
+    sum_words = bag_of_words.sum(axis=0) 
+    words_freq = [(word, sum_words[0, idx]) for word, idx in vec.vocabulary_.items()]
+    words_freq = sorted(words_freq, key = lambda x: x[1], reverse=True)
+    return words_freq[:n]
+
+
+def plot_text_ngrams(df):
+    try:
+        plt.figure(figsize = (16,9))
+        most_common_uni = get_top_text_ngrams(df.TEXTO_STOPWORD,20,1, dataframe=df)
+        most_common_uni = dict(most_common_uni)
+        sns.barplot(x=list(most_common_uni.values()),y=list(most_common_uni.keys()), palette='bright')
+        plt.xticks(rotation=90)
+        plt.show()
+        st.pyplot()
+    except ValueError:
+        st.write('No Existen Datos Con este sentimiento - No se Desplegara este Gráfico')
+
+
+def popular_users(data):
+    try:
+        # DISTRIBUCION DE TEXTOS BASADO EN SUBJETIVIDAD
+        st.write('Usuarios con que más comentan')
+        plt.figure(figsize=(12,10))
+        sns.countplot(data=data, y="AUTOR", palette='bright')
+        plt.xticks(rotation=90)
+        plt.show()
+        st.pyplot()
+    except ValueError:
+            st.write('Insuficiente Cantidad de Palabras para generar Gráfico de Distribución de textos ')
+    except AttributeError:
+            st.write('Insuficiente Cantidad de Palabras para generar Gráfico de Distribución de textos ')
 ############################# STREAMLIT ###############################3
-
+image = Image.open('youtubelogo.jpg')
 st.title("YOUTUBE SCRAPPER - TELERED")
-
+st.image(image, caption='Logo YouTube')
 
 # Add a selectbox to the sidebar:
 add_selectbox = st.sidebar.selectbox(
@@ -279,6 +318,12 @@ def input_url():
     return url
 
 url = input_url()
+my_bar = st.progress(0)
+
+for percent_complete in range(100):
+    time.sleep(0.1)
+    my_bar.progress(percent_complete + 1)
+
 st.write('Link del video extraido: ',url)
 st_player(url)
 
@@ -412,6 +457,7 @@ def ScrapComment(url):
         dataframe['POLARIDAD'] = dataframe['COMENTARIO'].apply(spanish_sentiment)
         dataframe['POLARIDAD'] = dataframe['POLARIDAD'].astype('float')
         dataframe['SENTIMIENTO'] = dataframe['POLARIDAD'].apply(sentimiento)
+       
 
         positivo = dataframe[dataframe['SENTIMIENTO']=='POSITIVO']
         negativo = dataframe[dataframe['SENTIMIENTO']=='NEGATIVO']
@@ -435,6 +481,8 @@ DATA, POSITIVO, NEUTRAL, NEGATIVO = ScrapComment(url=url)
 
 
 def streamlitWebAPP(dataframe, positivo, negativo, neutral):
+    st.write('')
+    st.subheader('Tabla de Comentarios Extraidos')
     try:
         # Titulo de video
         titulo_video = dataframe['TITULO']
@@ -514,23 +562,33 @@ def streamlitWebAPP(dataframe, positivo, negativo, neutral):
     st.bar_chart(data=dataframe['LIKE'])
     # ----------------------------------------------------------------------------------------------------------------------------
     # Likes por comentario
-    like_barplot = sns.barplot(x="AUTOR", y="LIKE", data=dataframe)
-    like_barplot.set_xlabel('Usuario de Youtube',fontsize=15)
-    plt.title('LIKES', color='black', size=18)
+    like_barplot = sns.barplot(x="AUTOR", y="LIKE", data=data_table)
+    like_barplot.set_xlabel('Usuario de Youtube')
+    plt.title('LIKES', color='black')
     plt.xlabel('Usuario Youtube')
     plt.xticks(rotation=90)
     st.pyplot()
 
     # ----------------------------------------------------------------------------------------------------------------------------
+    st.subheader('Sentimientos de Comentarios')
     color_sentimiento = ['red', 'green', 'gray']
-    sns.countplot(x='SENTIMIENTO',data=dataframe)
+    sns.countplot(x='SENTIMIENTO',data=data_table)
     plt.title('Sentimientos de Comentarios', color='black', size=18)
     st.pyplot()
-    
+    # ----------------------------------------------------------------------------------------------------------------------------
+    st.subheader('Usuarios con más Comentarios')
+    st.write('Usuarios con Para todos los Comentarios')
+    popular_users(data=data_table)
+    st.write('Usuarios con Para todos los Comentarios Positivos')
+    popular_users(data=positivo_table)
+    st.write('Usuarios con Para todos los Comentarios Negativos')
+    popular_users(data=negativo_table)
+    st.write('Usuarios con Para todos los Comentarios Neutrales')
+    popular_users(data=neutral_table)
     # ----------------------------------------------------------------------------------------------------------------------------
     # Wordcloud global 
     try:
-        allwords_todo = ' '.join([fk for fk in dataframe.TEXTO_STOPWORD])
+        allwords_todo = ' '.join([fk for fk in data_table.TEXTO_STOPWORD])
         wordcloud_todo = WordCloud(width=600, height=300, random_state=22, max_font_size=119, background_color='navy').generate(allwords_todo)
         fig_todo = plt.figure(figsize=(12,10))
         plt.imshow(wordcloud_todo, interpolation='bilinear')
@@ -566,28 +624,36 @@ def streamlitWebAPP(dataframe, positivo, negativo, neutral):
     except AttributeError:
             st.write('Insuficiente Cantidad de Palabras para Construir las nubes de palabras')
     # ----------------------------------------------------------------------------------------------------------------------------
-    try:
-        # conteo de palabras
-        st.subheader('NÚMERO DE PALABRAS PARA TODOS LOS COMENTARIOS')
-        conteo_palabras(dataframe=dataframe, color="#33A1FF")
-        st.subheader('NÚMERO DE PALABRAS PARA TODOS LOS COMENTARIOS POSITIVOS')
-        conteo_palabras(dataframe=positivo, color='green')
-        st.subheader('NÚMERO DE PALABRAS PARA TODOS LOS COMENTARIOS NEGATIVOS')
-        conteo_palabras(dataframe=negativo, color='red')
-    except ValueError:
-            st.write('Insuficiente Cantidad de Palabras para Construir las nubes de palabras')
-    except AttributeError:
-            st.write('Insuficiente Cantidad de Palabras para Construir las nubes de palabras')
+    st.subheader('Algoritmo N-Gram')
+    st.write('Terminos Más importantes ségun Algoritmo N-GRAM - Todos los Comentarios')
+    plot_text_ngrams(df=data_table)
+    st.write('Terminos Más importantes ségun Algoritmo N-GRAM - Comentarios Positivos')
+    plot_text_ngrams(df=positivo_table)
+    st.write('Terminos Más importantes ségun Algoritmo N-GRAM - Comentarios Negativos')
+    plot_text_ngrams(df=negativo_table)
+    st.write('Terminos Más importantes ségun Algoritmo N-GRAM - Comentarios Neutros')
+    plot_text_ngrams(df=neutral_table)
     # -----------------------------------------------------------------------------------------------------------
-    termFrequencyVocab(data=dataframe, tipo_sentimiento='totales')
-    termFrequencyVocab(data=positivo, tipo_sentimiento='positivo')
+    st.subheader('Vocabulario de Terminos Extraidos')
+    termFrequencyVocab(data=data_table, tipo_sentimiento='totales')
+    termFrequencyVocab(data=positivo_table, tipo_sentimiento='positivo')
     termFrequencyVocab(data=negativo, tipo_sentimiento='negativo')
     termFrequencyVocab(data=neutral, tipo_sentimiento='neutrales')
     # -----------------------------------------------------------------------------------------------------------
-    text_dist(data=dataframe)
-    text_dist(data=positivo)
+    st.subheader('Distribución de Caracteres por Cada autor de Comentario')
+    st.write('Distribución de Para Todos los comentarios')
+    text_dist(data=data_table)
+    st.write('Distribución de Para Todos los comentarios Positivos')
+    text_dist(data=positivo_table)
+    st.write('Distribución de Para Todos los comentarios Negativos')
     text_dist(data=negativo)
+    st.write('Distribución de Para Todos los comentarios Neutrales')
     text_dist(data=neutral)
+    #-------------------------------------------------------------------------------------------------------------------
+
+    st.success('¡Análisis Finalizado con exito Teler!')
+    st.balloons()
+
 if __name__ == "__main__":
     ScrapComment(url=url)
     streamlitWebAPP(dataframe=DATA, positivo=POSITIVO, negativo=NEGATIVO, neutral=NEUTRAL)
