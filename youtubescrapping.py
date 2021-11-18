@@ -319,12 +319,13 @@ add_selectbox = st.sidebar.selectbox(
 # -----------------------------------------------------------------------
 def input_url():
     try:
-        url = st.text_input("Escriba el Link de YouTube:")
+        
         count = 0
         while True:
+            url = st.text_input("Escriba el Link de YouTube:")
             if url.startswith('https://www.youtube.com/watch?v=') == False:
                 st.markdown("<h4 style='text-align: center; color: red;'>Este link no pertenece a un video de YouTube :(</h4>", unsafe_allow_html=True)
-                break
+                pass
             else:
                 url.startswith('https://www.youtube.com/watch?v=')
                 st.markdown("<h4 style='text-align: center; color: green;'>¡Link con Formato correcto! ¡Muy Bien Teler!</h4>", unsafe_allow_html=True)
