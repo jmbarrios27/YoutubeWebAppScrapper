@@ -48,6 +48,8 @@ import urllib.request as url
 import numpy as np
 import requests as r
 from streamlit_player import st_player
+import sys 
+
 
 st.cache(suppress_st_warning=True)
 start_time = time.time()
@@ -165,6 +167,19 @@ def to_excel(df):
     writer.save()
     processed_data = output.getvalue()
     return processed_data
+
+
+def wordCloudGenerator(data, background_color):
+        try:
+            allwords = ' '.join([fk for fk in data.TEXTO_STOPWORD])
+            wordcloud_todo = WordCloud(width=600, height=300, random_state=22, max_font_size=119, background_color= background_color).generate(allwords)
+            fig_todo = plt.figure(figsize=(12,10))
+            plt.imshow(wordcloud_todo, interpolation='bilinear')
+            plt.axis('off')
+            st.pyplot(fig_todo, use_column_width=True)
+        
+        except:
+            st.write('No existen comentarios con este tipo de sentimiento')
 
 
 def conteo_palabras(dataframe, color):
@@ -306,9 +321,11 @@ def input_url():
         count = 0
         while True:
             if url =='':
-                url
+               st.markdown("<p style='text-align: center; color: red;'>Este link no pertenece a un video de YouTube :(</p>", unsafe_allow_html=True)
+               return input_url()
             elif url.startswith('https://www.youtube.com/watch?v=') == False:
-                url
+                st.markdown("<p style='text-align: center; color: red;'>Este link no pertenece a un video de YouTube :(</p>", unsafe_allow_html=True)
+                return input_url()
             else:
                 url.startswith('https://www.youtube.com/watch?v=')
                 st.write('Link con fomato correcto')
@@ -482,7 +499,7 @@ DATA, POSITIVO, NEUTRAL, NEGATIVO = ScrapComment(url=url)
 
 def streamlitWebAPP(dataframe, positivo, negativo, neutral):
     st.write('')
-    st.subheader('Tabla de Comentarios Extraidos')
+    st.markdown("<h2 style='text-align: center; color: red;'>TABLA DE COMENTARIOS</h1>", unsafe_allow_html=True)
     try:
         # Titulo de video
         titulo_video = dataframe['TITULO']
@@ -557,20 +574,20 @@ def streamlitWebAPP(dataframe, positivo, negativo, neutral):
     st.write(dataframe.describe())
         
     # ----------------------------------------------------------------------------------------------------------------------------
-    st.subheader('NÚMERO DE LIKES DE COMENTARIOS')
+    st.markdown("<h2 style='text-align: center; color: red;'>Comentarios que contienen 'Me Gusta'</h1>", unsafe_allow_html=True)
     #Bar Chart
     st.bar_chart(data=dataframe['LIKE'])
     # ----------------------------------------------------------------------------------------------------------------------------
     # Likes por comentario
-    like_barplot = sns.barplot(x="AUTOR", y="LIKE", data=data_table)
-    like_barplot.set_xlabel('Usuario de Youtube')
+    like_barplot = sns.barplot(x="AUTOR", y="LIKE", data=data_table, palette='bright')
     plt.title('LIKES', color='black')
     plt.xlabel('Usuario Youtube')
     plt.xticks(rotation=90)
     st.pyplot()
 
     # ----------------------------------------------------------------------------------------------------------------------------
-    st.subheader('Sentimientos de Comentarios')
+    st.markdown("<h2 style='text-align: center; color: red;'>Algoritmos para Análisis de Sentimientos en los Datos</h1>", unsafe_allow_html=True)
+    st.subheader('Distribución de sentimientos entre los comentarios extraidos')
     color_sentimiento = ['red', 'green', 'gray']
     sns.countplot(x='SENTIMIENTO',data=data_table)
     plt.title('Sentimientos de Comentarios', color='black', size=18)
@@ -586,45 +603,16 @@ def streamlitWebAPP(dataframe, positivo, negativo, neutral):
     st.write('Usuarios con Para todos los Comentarios Neutrales')
     popular_users(data=neutral_table)
     # ----------------------------------------------------------------------------------------------------------------------------
-    # Wordcloud global 
-    try:
-        allwords_todo = ' '.join([fk for fk in data_table.TEXTO_STOPWORD])
-        wordcloud_todo = WordCloud(width=600, height=300, random_state=22, max_font_size=119, background_color='navy').generate(allwords_todo)
-        fig_todo = plt.figure(figsize=(12,10))
-        plt.imshow(wordcloud_todo, interpolation='bilinear')
-        plt.axis('off')
-
-        # Wordcloud positivo
-        allwords_positivo = ' '.join([fk for fk in positivo.TEXTO_STOPWORD])
-        wordcloud_positivo = WordCloud(width=600, height=300, random_state=22, max_font_size=119, background_color='darkgreen').generate(allwords_positivo)
-        fig_positivo = plt.figure(figsize=(12,10))
-        plt.imshow(wordcloud_positivo, interpolation='bilinear')
-        plt.axis('off')
-
-        # Wordcloud negativo
-        allwords_negativo = ' '.join([fk for fk in negativo.TEXTO_STOPWORD])
-        wordcloud_negativo = WordCloud(width=600, height=300, random_state=22, max_font_size=119, background_color='darkred').generate(allwords_negativo)
-        fig_negativo = plt.figure(figsize=(12,10))
-        plt.imshow(wordcloud_negativo, interpolation='bilinear')
-        plt.axis('off')
-
-        # Por columna
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.header("NUBE 1")
-            st.pyplot(fig_todo, use_column_width=True)
-        with col2:
-            st.header("NUBE 2")
-            st.pyplot(fig_positivo, use_column_width=True)
-        with col3:
-            st.header("NUBE 3")
-            st.pyplot(fig_negativo, use_column_width=True)
-    except ValueError:
-            st.write('Insuficiente Cantidad de Palabras para Construir las nubes de palabras')
-    except AttributeError:
-            st.write('Insuficiente Cantidad de Palabras para Construir las nubes de palabras')
+    st.markdown("<h2 style='text-align: center; color: red;'>Word Cloud- Nube de Palabras</h1>", unsafe_allow_html=True)
+    st.subheader('Palabras que más se repiten en los comentarios')
+    # Generador de WordCloud
+    wordCloudGenerator(data=data_table, background_color='navy')
+    wordCloudGenerator(data=positivo_table, background_color='darkgreen')
+    wordCloudGenerator(data=negativo_table, background_color='darkred')
+    wordCloudGenerator(data=neutral_table, background_color='gray')
     # ----------------------------------------------------------------------------------------------------------------------------
-    st.subheader('Algoritmo N-Gram')
+    st.markdown("<h2 style='text-align: center; color: red;'>Algoritmo N-Gram</h1>", unsafe_allow_html=True)
+    st.subheader('Términos Más relevantes extraidos de los textos en los comentarios')
     st.write('Terminos Más importantes ségun Algoritmo N-GRAM - Todos los Comentarios')
     plot_text_ngrams(df=data_table)
     st.write('Terminos Más importantes ségun Algoritmo N-GRAM - Comentarios Positivos')
@@ -634,6 +622,7 @@ def streamlitWebAPP(dataframe, positivo, negativo, neutral):
     st.write('Terminos Más importantes ségun Algoritmo N-GRAM - Comentarios Neutros')
     plot_text_ngrams(df=neutral_table)
     # -----------------------------------------------------------------------------------------------------------
+    st.markdown("<h2 style='text-align: center; color: red;'>Algoritmo TF-IDF</h1>", unsafe_allow_html=True)
     st.subheader('Vocabulario de Terminos Extraidos')
     termFrequencyVocab(data=data_table, tipo_sentimiento='totales')
     termFrequencyVocab(data=positivo_table, tipo_sentimiento='positivo')
