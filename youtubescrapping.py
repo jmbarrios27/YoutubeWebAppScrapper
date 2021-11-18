@@ -306,6 +306,7 @@ def popular_users(data):
 ############################# STREAMLIT ###############################3
 image = Image.open('youtubelogo.jpg')
 st.title("YOUTUBE SCRAPPER - TELERED")
+st.markdown("<h3 style='text-align: center; color: magenta;'>CIENCIA DE DATOS</h3>", unsafe_allow_html=True)
 st.image(image, caption='Logo YouTube')
 
 # Add a selectbox to the sidebar:
@@ -314,29 +315,37 @@ add_selectbox = st.sidebar.selectbox(
     ('Link de Video','Archivo Excel')
 )
 
+
 # -----------------------------------------------------------------------
 def input_url():
     try:
         url = st.text_input("Escriba el Link de YouTube:")
         count = 0
         while True:
-            if url =='':
-               st.markdown("<p style='text-align: center; color: red;'>Este link no pertenece a un video de YouTube :(</p>", unsafe_allow_html=True)
-               return input_url()
-            elif url.startswith('https://www.youtube.com/watch?v=') == False:
-                st.markdown("<p style='text-align: center; color: red;'>Este link no pertenece a un video de YouTube :(</p>", unsafe_allow_html=True)
-                return input_url()
+            if url.startswith('https://www.youtube.com/watch?v=') == False:
+                st.markdown("<h4 style='text-align: center; color: red;'>Este link no pertenece a un video de YouTube :(</h4>", unsafe_allow_html=True)
+                break
             else:
                 url.startswith('https://www.youtube.com/watch?v=')
-                st.write('Link con fomato correcto')
+                st.markdown("<h4 style='text-align: center; color: green;'>¡Link con Formato correcto! ¡Muy Bien Teler!</h4>", unsafe_allow_html=True)
+                st.write('\N{grinning face with smiling eyes}')
+                st.balloons()
                 break
     except OSError:
         st.write('Colocar url con formato correcto')
     return url
 
 url = input_url()
-my_bar = st.progress(0)
 
+#--------------------- Barra de Progreso
+st.markdown("""
+<style>
+.stProgress .st-bo {
+    background-color: green;
+}
+</style>
+""", unsafe_allow_html=True)
+my_bar = st.progress(0)
 for percent_complete in range(100):
     time.sleep(0.1)
     my_bar.progress(percent_complete + 1)
@@ -344,7 +353,7 @@ for percent_complete in range(100):
 st.write('Link del video extraido: ',url)
 st_player(url)
 
-
+st.markdown("<h4 style='text-align: center; color: green;'>Cargando Todos los datos...</h4>", unsafe_allow_html=True)
 def ScrapComment(url):
     option = webdriver.FirefoxOptions()
     option.add_argument("--headless")
@@ -648,6 +657,7 @@ if __name__ == "__main__":
     streamlitWebAPP(dataframe=DATA, positivo=POSITIVO, negativo=NEGATIVO, neutral=NEUTRAL)
 
 ############### TIEMPO DE EJECUCIÓN TOTAL DEL PROGRAMA ######################
+
 print('')
 end_time = time.time()
 print(f'TIEMPO DE EJECUCIÓN TOTAL DEL PROGRAMA: {end_time - start_time} segundos.')
