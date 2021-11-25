@@ -336,7 +336,9 @@ def input_url():
         st.write('Colocar url con formato correcto')
     return url
 
-url = input_url()
+# url = input_url()
+# url = input('Ingresa Link del Video de YouTube:')
+url = input('Youtube video:')
 
 #--------------------- Barra de Progreso
 st.markdown("""
@@ -497,6 +499,7 @@ def ScrapComment(url):
     except AttributeError:
         st.write('EL Post no Cuenta con comentarios, por favor intentar con otro.')
 
+    
     dataframe.to_excel('D:\\ComentarioYoutube\\{0}'.format('comentarios_youtube' +'_'+clean_url +'_'+datestring + '.xlsx'), index=False)
     file_size = os.stat('D:\\ComentarioYoutube\\{0}'.format('comentarios_youtube' +'_'+clean_url +'_'+datestring + '.xlsx'))
     print("Size of file :", file_size.st_size, "bytes")
@@ -616,37 +619,45 @@ def streamlitWebAPP(dataframe, positivo, negativo, neutral):
     st.markdown("<h2 style='text-align: center; color: red;'>Word Cloud- Nube de Palabras</h1>", unsafe_allow_html=True)
     st.subheader('Palabras que más se repiten en los comentarios')
     # Generador de WordCloud
+    st.markdown("<h4 style='text-align: center; color: skyblue;'>Word Cloud- Todos los Comentarios</h4>", unsafe_allow_html=True)
     wordCloudGenerator(data=data_table, background_color='navy')
+    st.markdown("<h4 style='text-align: center; color: dakrgreen;'>Word Cloud- Todos los Comentarios Positivos</h4>", unsafe_allow_html=True)
     wordCloudGenerator(data=positivo_table, background_color='darkgreen')
+    st.markdown("<h4 style='text-align: center; color: darkred;'>Word Cloud- Todos los Comentarios Negativos</h4>", unsafe_allow_html=True)
     wordCloudGenerator(data=negativo_table, background_color='darkred')
+    st.markdown("<h4 style='text-align: center; color: gray;'>Word Cloud- Todos los Comentarios Neutrales</h4>", unsafe_allow_html=True)
     wordCloudGenerator(data=neutral_table, background_color='gray')
     # ----------------------------------------------------------------------------------------------------------------------------
-    st.markdown("<h2 style='text-align: center; color: red;'>Algoritmo N-Gram</h1>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center; color: skyblue;'>Algoritmo N-Gram</h1>", unsafe_allow_html=True)
     st.subheader('Términos Más relevantes extraidos de los textos en los comentarios')
-    st.write('Terminos Más importantes ségun Algoritmo N-GRAM - Todos los Comentarios')
+    st.markdown("<h4 style='text-align: center; color: skyblue;'>Terminos Más importantes ségun Algoritmo N-GRAM - Todos los Comentarios</h4>", unsafe_allow_html=True)
     plot_text_ngrams(df=data_table)
-    st.write('Terminos Más importantes ségun Algoritmo N-GRAM - Comentarios Positivos')
+    st.markdown("<h4 style='text-align: center; color: darkgreen;'>Terminos Más importantes ségun Algoritmo N-GRAM - Comentarios Positivos</h4>", unsafe_allow_html=True)
     plot_text_ngrams(df=positivo_table)
-    st.write('Terminos Más importantes ségun Algoritmo N-GRAM - Comentarios Negativos')
+    st.markdown("<h4 style='text-align: center; color: darkred;'>Terminos Más importantes ségun Algoritmo N-GRAM - Comentarios Negativos</h4>", unsafe_allow_html=True)
     plot_text_ngrams(df=negativo_table)
-    st.write('Terminos Más importantes ségun Algoritmo N-GRAM - Comentarios Neutros')
+    st.markdown("<h4 style='text-align: center; color: gray;'>Terminos Más importantes ségun Algoritmo N-GRAM - Comentarios Neutros</h4>", unsafe_allow_html=True)
     plot_text_ngrams(df=neutral_table)
     # -----------------------------------------------------------------------------------------------------------
     st.markdown("<h2 style='text-align: center; color: red;'>Algoritmo TF-IDF</h1>", unsafe_allow_html=True)
     st.subheader('Vocabulario de Terminos Extraidos')
+    st.markdown("<h4 style='text-align: center; color: skyblue;'>Vocabulario de Todos los Textos</h4>", unsafe_allow_html=True)
     termFrequencyVocab(data=data_table, tipo_sentimiento='totales')
+    st.markdown("<h4 style='text-align: center; color: darkgreen'>Vocabulario de Todos los Textos Positivos</h4>", unsafe_allow_html=True)
     termFrequencyVocab(data=positivo_table, tipo_sentimiento='positivo')
+    st.markdown("<h4 style='text-align: center; color: darkred'>Vocabulario de Todos los Textos Negativos</h4>", unsafe_allow_html=True)
     termFrequencyVocab(data=negativo, tipo_sentimiento='negativo')
+    st.markdown("<h4 style='text-align: center; color: gray'>Vocabulario de Todos los Textos Positivos Neutrales</h4>", unsafe_allow_html=True)
     termFrequencyVocab(data=neutral, tipo_sentimiento='neutrales')
     # -----------------------------------------------------------------------------------------------------------
-    st.subheader('Distribución de Caracteres por Cada autor de Comentario')
-    st.write('Distribución de Para Todos los comentarios')
+    st.markdown("<h2 style='text-align: center; color: skyblue;'>Distribución de Caracteres por Cada autor de Comentario</h1>", unsafe_allow_html=True)
+    st.markdown("<h4 style='text-align: center; color: skyblue;'>Distribución de Para Todos los comentarios</h4>", unsafe_allow_html=True)
     text_dist(data=data_table)
-    st.write('Distribución de Para Todos los comentarios Positivos')
+    st.markdown("<h4 style='text-align: center; color: darkgreen;'>Distribución de Para Todos los comentarios Positivos</h4>", unsafe_allow_html=True)
     text_dist(data=positivo_table)
-    st.write('Distribución de Para Todos los comentarios Negativos')
+    st.markdown("<h4 style='text-align: center; color: darkred;'>Distribución de Para Todos los comentarios Negativos</h4>", unsafe_allow_html=True)
     text_dist(data=negativo)
-    st.write('Distribución de Para Todos los comentarios Neutrales')
+    st.markdown("<h4 style='text-align: center; color: gray;'>Distribución de Para Todos los comentarios Neutrales</h4>", unsafe_allow_html=True)
     text_dist(data=neutral)
     #-------------------------------------------------------------------------------------------------------------------
 
@@ -655,7 +666,10 @@ def streamlitWebAPP(dataframe, positivo, negativo, neutral):
 
 if __name__ == "__main__":
     ScrapComment(url=url)
-    streamlitWebAPP(dataframe=DATA, positivo=POSITIVO, negativo=NEGATIVO, neutral=NEUTRAL)
+    try:
+        streamlitWebAPP(dataframe=DATA, positivo=POSITIVO, negativo=NEGATIVO, neutral=NEUTRAL)
+    except ValueError:
+        st.write('No Existen Comentarios Teler :(')
 
 ############### TIEMPO DE EJECUCIÓN TOTAL DEL PROGRAMA ######################
 
