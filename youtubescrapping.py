@@ -312,34 +312,17 @@ st.image(image, caption='Logo YouTube')
 # Add a selectbox to the sidebar:
 add_selectbox = st.sidebar.selectbox(
     'Método de Scrapping',
-    ('Link de Video','Archivo Excel')
+    ('Link de Video','Subir Archivo Excel')
 )
 
 
+
 # -----------------------------------------------------------------------
-def input_url():
-    try:
-        
-        count = 0
-        while True:
-            url = st.text_input("Escriba el Link de YouTube:")
-            if url.startswith('https://www.youtube.com/watch?v=') == False:
-                st.markdown("<h4 style='text-align: center; color: red;'>Este link no pertenece a un video de YouTube :(</h4>", unsafe_allow_html=True)
-                pass
-            else:
-                url.startswith('https://www.youtube.com/watch?v=')
-                st.markdown("<h4 style='text-align: center; color: green;'>¡Link con Formato correcto! ¡Muy Bien Teler!</h4>", unsafe_allow_html=True)
-                st.write('\N{grinning face with smiling eyes}')
-                st.balloons()
-                break
-    except OSError:
-        st.write('Colocar url con formato correcto')
-    return url
-
-# url = input_url()
-# url = input('Ingresa Link del Video de YouTube:')
-url = input('Youtube video:')
-
+url = st.text_input('Ingrese Video de Youtube:')
+if not url:
+    st.warning('Por favor ingrese link del video')
+    st.stop()
+st.success('¡Excelente Teler!')
 #--------------------- Barra de Progreso
 st.markdown("""
 <style>
@@ -512,7 +495,7 @@ DATA, POSITIVO, NEUTRAL, NEGATIVO = ScrapComment(url=url)
 
 def streamlitWebAPP(dataframe, positivo, negativo, neutral):
     st.write('')
-    st.markdown("<h2 style='text-align: center; color: red;'>TABLA DE COMENTARIOS</h1>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center; color: yellow;'>TABLA DE COMENTARIOS</h1>", unsafe_allow_html=True)
     try:
         # Titulo de video
         titulo_video = dataframe['TITULO']
@@ -587,7 +570,7 @@ def streamlitWebAPP(dataframe, positivo, negativo, neutral):
     st.write(dataframe.describe())
         
     # ----------------------------------------------------------------------------------------------------------------------------
-    st.markdown("<h2 style='text-align: center; color: red;'>Comentarios que contienen 'Me Gusta'</h1>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center; color: yellow;'>Comentarios que contienen 'Me Gusta'</h1>", unsafe_allow_html=True)
     #Bar Chart
     st.bar_chart(data=dataframe['LIKE'])
     # ----------------------------------------------------------------------------------------------------------------------------
@@ -599,7 +582,7 @@ def streamlitWebAPP(dataframe, positivo, negativo, neutral):
     st.pyplot()
 
     # ----------------------------------------------------------------------------------------------------------------------------
-    st.markdown("<h2 style='text-align: center; color: red;'>Algoritmos para Análisis de Sentimientos en los Datos</h1>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center; color: yellow;'>Algoritmos para Análisis de Sentimientos en los Datos</h1>", unsafe_allow_html=True)
     st.subheader('Distribución de sentimientos entre los comentarios extraidos')
     color_sentimiento = ['red', 'green', 'gray']
     sns.countplot(x='SENTIMIENTO',data=data_table)
