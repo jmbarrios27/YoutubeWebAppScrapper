@@ -50,7 +50,6 @@ import requests as r
 from streamlit_player import st_player
 import sys 
 
-
 st.cache(suppress_st_warning=True)
 start_time = time.time()
 print('*************************************************************************')
@@ -309,353 +308,372 @@ st.title("YOUTUBE SCRAPPER - TELERED")
 st.markdown("<h3 style='text-align: center; color: magenta;'>CIENCIA DE DATOS</h3>", unsafe_allow_html=True)
 st.image(image, caption='Logo YouTube')
 
-# Add a selectbox to the sidebar:
-add_selectbox = st.sidebar.selectbox(
-    'Método de Scrapping',
-    ('Link de Video','Subir Archivo Excel')
-)
 
-
-
+control = False
 # -----------------------------------------------------------------------
-url = st.text_input('Ingrese Video de Youtube:')
-if not url:
-    st.warning('Por favor ingrese link del video')
-    st.stop()
-st.success('¡Excelente Teler!')
-#--------------------- Barra de Progreso
-st.markdown("""
-<style>
-.stProgress .st-bo {
-    background-color: green;
-}
-</style>
-""", unsafe_allow_html=True)
-my_bar = st.progress(0)
-for percent_complete in range(100):
-    time.sleep(0.1)
-    my_bar.progress(percent_complete + 1)
-
-st.write('Link del video extraido: ',url)
-st_player(url)
-
-st.markdown("<h4 style='text-align: center; color: green;'>Cargando Todos los datos...</h4>", unsafe_allow_html=True)
-def ScrapComment(url):
-    option = webdriver.FirefoxOptions()
-    option.add_argument("--headless")
-    driver = webdriver.Firefox(executable_path=GeckoDriverManager().install(), options=option)
-    driver.get(url)
-    prev_h = 0
-    while True:
-        height = driver.execute_script("""
-                function getActualHeight() {
-                    return Math.max(
-                        Math.max(document.body.scrollHeight, document.documentElement.scrollHeight),
-                        Math.max(document.body.offsetHeight, document.documentElement.offsetHeight),
-                        Math.max(document.body.clientHeight, document.documentElement.clientHeight)
-                    );
-                }
-                return getActualHeight();
-            """)
-        driver.execute_script(f"window.scrollTo({prev_h},{prev_h + 200})")
-        # fix the time sleep value according to your network connection
-        time.sleep(1)
-        prev_h +=200  
-        if prev_h >= height:
-            break
-    soup = BeautifulSoup(driver.page_source, 'html.parser')
-    driver.quit()
-
-    print(f'INICIANDO EXTRACCIÓN DE LA URL: {url}')
-    # TITULO DE VIDEO.
-    title_text_div = soup.select_one('#container h1')
-    title = title_text_div and title_text_div.text
-
-    # COMENTARIO
-    comment_div = soup.select("#content #content-text")
-    comment_list = [x.text for x in comment_div]
-
-    # AUTOR
-    author_div = soup.select("#body #author-text")
-    author_list = [y.text for y in author_div]
-
-    # extract list
-    vote_div = soup.select('#toolbar #vote-count-middle')
-    vote_list = [z.text for z in vote_div]
-    
-
-    # Post owner.
-    owner_div = soup.select_one('#text-container a.yt-simple-endpoint.style-scope.yt-formatted-string')
-    owner_list = owner_div and owner_div.text
-
-    # date of the post.
-    date_div = soup.select_one('#info #info-strings')
-    date_list = date_div and date_div.text
-
-    # date of the post.
-    comment_date_div = soup.select('#header-author a.yt-simple-endpoint.style-scope.yt-formatted-string')
-    comment_date_list = [cm.text for cm in comment_date_div]
-                                                                                
-
-    # fecha de scrapping
-    today = date.today()
-
-    dataframe = pd.DataFrame(
-    {'TITULO': title,
-     'COMENTARIO': comment_list,
-     'AUTOR': author_list,
-     'LIKE': vote_list,
-     'PUBLICADO_POR': owner_list,
-     'FECHA_POST': date_list,
-     'FECHA_COMENTARIO': comment_date_list
-    })
-
-    dataframe['LIKE'] = dataframe['LIKE'].astype('int')
-    print(type(dataframe['LIKE']))
-    # ELIMIANNDO ESPACIONES ANTES Y DESPUES DE LOS TEXTOS
-    dataframe['TITULO'] = dataframe['TITULO'].str.strip()
-    dataframe['PUBLICADO_POR'] = dataframe['PUBLICADO_POR'].str.strip()
-    dataframe['FECHA_POST'] = dataframe['FECHA_POST'].str.strip()
-
-    # LIMPIENZA FECHA DE COMENTARIO
+def input_url():
+    global control
+    control = False
     try:
-        dataframe['FECHA_COMENTARIO'] = dataframe['FECHA_COMENTARIO'].apply(limpieza_fecha_comentario)
-        dataframe['FECHA_COMENTARIO'] = dataframe['FECHA_COMENTARIO'].str.strip()
-    except AttributeError: 
-        st.write('EL Post no Cuenta con comentarios, por favor intentar con otro.')
+        #count = 0
+        #while True:
+            url = st.text_input("Escriba el Link de YouTube:")
+            boton = st.button('Enviar Link')
+            if len(url) > 0:
+                if url.startswith('https://www.youtube.com/watch?v=') == False:
+                    st.markdown("<h4 style='text-align: center; color: red;'>Este link no pertenece a un video de YouTube :(</h4>", unsafe_allow_html=True)
+                    st.warning('Ingresa el Link de un video de YouTube')
+                    #pass
+                else:
+                    control = True
+                    url.startswith('https://www.youtube.com/watch?v=')
+                    st.markdown("<h4 style='text-align: center; color: green;'>¡Link con Formato correcto! ¡Muy Bien Teler!</h4>", unsafe_allow_html=True)
+                    st.write('\N{grinning face with smiling eyes}')
+                    st.success('BOOM')
+                    st.balloons()
+                    #break
+    except OSError:
+        st.write('Colocar url con formato correcto')
+    return url
 
-    dataframe['FECHA_EXTRACCION'] = today
+# Llamando a la variable de entrada de la url
+url = input_url()
 
-    try:
-        dataframe['COMENTARIO'] = dataframe['COMENTARIO'].apply(text_clean)
-        dataframe['COMENTARIO'] = dataframe['COMENTARIO'].apply(remove_emoji)
-        dataframe['COMENTARIO'] = dataframe['COMENTARIO'].str.strip()
-        dataframe['CARACTERES'] = dataframe['COMENTARIO'].apply(lambda x: len(x))
-        dataframe['CARACTERES'] = dataframe['CARACTERES'].astype('int')
+# Controlando el Flujo
+if control == True:  
 
-        dataframe['TEXTO_STOPWORD'] = dataframe['COMENTARIO']
-        dataframe['TEXTO_STOPWORD'] = dataframe['TEXTO_STOPWORD'].apply(removeStopwords)
-        dataframe['TEXTO_STOPWORD'] = dataframe['TEXTO_STOPWORD'].str.strip()
-    except AttributeError:
-        st.write('EL Post no Cuenta con comentarios, por favor intentar con otro.')
+    #--------------------- Barra de Progreso
+    st.markdown("""
+    <style>
+    .stProgress .st-bo {
+        background-color: green;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    my_bar = st.progress(0)
+    for percent_complete in range(100):
+        time.sleep(0.1)
+        my_bar.progress(percent_complete + 1)
 
-    try:
-        # LIMPIANDO AUTOR
-        dataframe['AUTOR'] = dataframe['AUTOR'].apply(text_clean)
-        dataframe['AUTOR'] = dataframe['AUTOR'].apply(remove_emoji)
-        dataframe['AUTOR'] = dataframe['AUTOR'].str.lstrip()
+    st.write('Link del video extraido: ',url)
+    st_player(url)
 
+    st.markdown("<h4 style='text-align: center; color: green;'>Cargando Todos los datos...</h4>", unsafe_allow_html=True)
+    def ScrapComment(url):
+        driver = webdriver.Firefox(executable_path=GeckoDriverManager().install())
+        option = webdriver.FirefoxOptions()
+        option.add_argument("--headless")
+        driver.get(url)
+        prev_h = 0
+        while True:
+            height = driver.execute_script("""
+                    function getActualHeight() {
+                        return Math.max(
+                            Math.max(document.body.scrollHeight, document.documentElement.scrollHeight),
+                            Math.max(document.body.offsetHeight, document.documentElement.offsetHeight),
+                            Math.max(document.body.clientHeight, document.documentElement.clientHeight)
+                        );
+                    }
+                    return getActualHeight();
+                """)
+            driver.execute_script(f"window.scrollTo({prev_h},{prev_h + 200})")
+            # fix the time sleep value according to your network connection
+            time.sleep(1)
+            prev_h +=200  
+            if prev_h >= height:
+                break
+        soup = BeautifulSoup(driver.page_source, 'html.parser')
+        driver.quit()
 
-        # ELIMINANDO COMENTARIOS EN BLANCO
-        dataframe['LEN'] = dataframe['COMENTARIO'].str.len()
-        dataframe = dataframe[dataframe['LEN']>=1]
-        dataframe.drop(columns=['LEN'], inplace=True)
-    except AttributeError:
-        st.write('EL Post no Cuenta con comentarios, por favor intentar con otro.')
+        print(f'INICIANDO EXTRACCIÓN DE LA URL: {url}')
+        # TITULO DE VIDEO.
+        title_text_div = soup.select_one('#container h1')
+        title = title_text_div and title_text_div.text
 
-    # exportación a excel
-    datestring = date.today().strftime('%Y-%m-%d')
-    clean_url = re.sub(r'https://www.youtube.com/watch', '', url)
-    clean_url = clean_url[3:]
+        # COMENTARIO
+        comment_div = soup.select("#content #content-text")
+        comment_list = [x.text for x in comment_div]
 
-    # llave video
-    dataframe['LLAVE_VIDEO'] = clean_url
-    cols = list(dataframe.columns)
-    cols = [cols[-1]] + cols[:-1]
-    dataframe = dataframe[cols]
+        # AUTOR
+        author_div = soup.select("#body #author-text")
+        author_list = [y.text for y in author_div]
 
-    # POLARIDAD Y SENTIMIENTO
-    try:
-        dataframe['POLARIDAD'] = dataframe['COMENTARIO'].apply(spanish_sentiment)
-        dataframe['POLARIDAD'] = dataframe['POLARIDAD'].astype('float')
-        dataframe['SENTIMIENTO'] = dataframe['POLARIDAD'].apply(sentimiento)
-       
-
-        positivo = dataframe[dataframe['SENTIMIENTO']=='POSITIVO']
-        negativo = dataframe[dataframe['SENTIMIENTO']=='NEGATIVO']
-        neutral = dataframe[dataframe['SENTIMIENTO']=='NEUTRAL']
-    except AttributeError:
-        st.write('EL Post no Cuenta con comentarios, por favor intentar con otro.')
-
-    try:
-        dataframe['NUMERIC_SENTIMENT'] = dataframe['POLARIDAD'].apply(getSentiment)
-    except AttributeError:
-        st.write('EL Post no Cuenta con comentarios, por favor intentar con otro.')
-
-    
-    dataframe.to_excel('D:\\ComentarioYoutube\\{0}'.format('comentarios_youtube' +'_'+clean_url +'_'+datestring + '.xlsx'), index=False)
-    file_size = os.stat('D:\\ComentarioYoutube\\{0}'.format('comentarios_youtube' +'_'+clean_url +'_'+datestring + '.xlsx'))
-    print("Size of file :", file_size.st_size, "bytes")
-    return dataframe, positivo, neutral, negativo
-
-
-# Extrayendo datos segregados por sentimiento y transofrmandolas a variables de entorno.
-DATA, POSITIVO, NEUTRAL, NEGATIVO = ScrapComment(url=url)
-
-
-def streamlitWebAPP(dataframe, positivo, negativo, neutral):
-    st.write('')
-    st.markdown("<h2 style='text-align: center; color: yellow;'>TABLA DE COMENTARIOS</h1>", unsafe_allow_html=True)
-    try:
-        # Titulo de video
-        titulo_video = dataframe['TITULO']
-        titulo_video = pd.DataFrame(titulo_video)
-        titulo_video = titulo_video.iloc[0]['TITULO']
-        st.subheader('TITULO DEL VIDEO')
-        st.write(titulo_video)
-    except IndexError:
-        st.write('EL Post no Cuenta con comentarios, por favor intentar con otro.')
-    # ----------------------------------------------------------------------------------------------------------------------------
-    # Tabla de todos los datos
-    try:
-        data_table = dataframe.drop(columns=['LLAVE_VIDEO', 'TITULO'])
-        st.dataframe(data_table.head(15),10000,10000)
-        st.write('Número de Comentarios extraidos: ', len(data_table))
-    except ValueError:
-            st.write('No existen Comentarios')
-    except AttributeError:
-            st.write('No existen comenatarios')
-
-    # Tabla de todos los datos positivos
-    try:
-        positivo_table = positivo.drop(columns=['LLAVE_VIDEO', 'TITULO'])
-        st.dataframe(positivo_table.head(15),10000,10000)
-        st.write('Número de Comentarios positivos extraidos: ', len(positivo_table))
-    except ValueError:
-            st.write('No existen Comentarios positivos')
-    except AttributeError:
-            st.write('No existen comenatarios positivos')
-
-      # Tabla de todos los datos negativos
-    try:
-        negativo_table = negativo.drop(columns=['LLAVE_VIDEO', 'TITULO'])
-        st.dataframe(negativo_table.head(15),10000,10000)
-        st.write('Número de Comentarios negativo extraidos: ', len(negativo_table))
-    except ValueError:
-            st.write('No existen Comentarios negativos')
-    except AttributeError:
-            st.write('No existen comenatarios negativos')
-
-       # Tabla de todos los datos neutrakes
-    try:
-        neutral_table = neutral.drop(columns=['LLAVE_VIDEO', 'TITULO'])
-        st.dataframe(neutral_table.head(15),10000,10000)
-        st.write('Número de Comentarios neutrales extraidos: ', len(neutral_table))
-    except ValueError:
-            st.write('No existen Comentarios neutrales')
-    except AttributeError:
-            st.write('No existen comenatarios neutrales')
-    
-    # ----------------------------------------------------------------------------------------------------------------------------
-    try:
-        st.write('Comentario con Más Likes')
-        st.write(max(dataframe.LIKE))
-    except ValueError:
-            st.write('Ningún comentario tienen Like')
-    except AttributeError:
-            st.write('Ningún Comentario tiene  Like')
-
-    # ----------------------------------------------------------------------------------------------------------------------------
-    # Habilitar botón para descargar el archivo
-    df_xlsx = to_excel(dataframe)
-    # exportación a excel
-    datestring = date.today().strftime('%Y-%m-%d')
-    clean_url = re.sub(r'https://www.youtube.com/watch', '', url)
-    clean_url = clean_url[3:]
-    st.download_button(label='📥 DESCARGAR ARCHIVO COMPLETO',
-                                data=df_xlsx ,
-                                file_name= 'comentarios_youtube' +'_'+clean_url +'_'+datestring + '.xlsx')
-    # ----------------------------------------------------------------------------------------------------------------------------
-    # # show statistics on the data
-    st.write(dataframe.describe())
+        # extract list
+        vote_div = soup.select('#toolbar #vote-count-middle')
+        vote_list = [z.text for z in vote_div]
         
-    # ----------------------------------------------------------------------------------------------------------------------------
-    st.markdown("<h2 style='text-align: center; color: yellow;'>Comentarios que contienen 'Me Gusta'</h1>", unsafe_allow_html=True)
-    #Bar Chart
-    st.bar_chart(data=dataframe['LIKE'])
-    # ----------------------------------------------------------------------------------------------------------------------------
-    # Likes por comentario
-    like_barplot = sns.barplot(x="AUTOR", y="LIKE", data=data_table, palette='bright')
-    plt.title('LIKES', color='black')
-    plt.xlabel('Usuario Youtube')
-    plt.xticks(rotation=90)
-    st.pyplot()
 
-    # ----------------------------------------------------------------------------------------------------------------------------
-    st.markdown("<h2 style='text-align: center; color: yellow;'>Algoritmos para Análisis de Sentimientos en los Datos</h1>", unsafe_allow_html=True)
-    st.subheader('Distribución de sentimientos entre los comentarios extraidos')
-    color_sentimiento = ['red', 'green', 'gray']
-    sns.countplot(x='SENTIMIENTO',data=data_table)
-    plt.title('Sentimientos de Comentarios', color='black', size=18)
-    st.pyplot()
-    # ----------------------------------------------------------------------------------------------------------------------------
-    st.subheader('Usuarios con más Comentarios')
-    st.write('Usuarios con Para todos los Comentarios')
-    popular_users(data=data_table)
-    st.write('Usuarios con Para todos los Comentarios Positivos')
-    popular_users(data=positivo_table)
-    st.write('Usuarios con Para todos los Comentarios Negativos')
-    popular_users(data=negativo_table)
-    st.write('Usuarios con Para todos los Comentarios Neutrales')
-    popular_users(data=neutral_table)
-    # ----------------------------------------------------------------------------------------------------------------------------
-    st.markdown("<h2 style='text-align: center; color: red;'>Word Cloud- Nube de Palabras</h1>", unsafe_allow_html=True)
-    st.subheader('Palabras que más se repiten en los comentarios')
-    # Generador de WordCloud
-    st.markdown("<h4 style='text-align: center; color: skyblue;'>Word Cloud- Todos los Comentarios</h4>", unsafe_allow_html=True)
-    wordCloudGenerator(data=data_table, background_color='navy')
-    st.markdown("<h4 style='text-align: center; color: dakrgreen;'>Word Cloud- Todos los Comentarios Positivos</h4>", unsafe_allow_html=True)
-    wordCloudGenerator(data=positivo_table, background_color='darkgreen')
-    st.markdown("<h4 style='text-align: center; color: darkred;'>Word Cloud- Todos los Comentarios Negativos</h4>", unsafe_allow_html=True)
-    wordCloudGenerator(data=negativo_table, background_color='darkred')
-    st.markdown("<h4 style='text-align: center; color: gray;'>Word Cloud- Todos los Comentarios Neutrales</h4>", unsafe_allow_html=True)
-    wordCloudGenerator(data=neutral_table, background_color='gray')
-    # ----------------------------------------------------------------------------------------------------------------------------
-    st.markdown("<h2 style='text-align: center; color: skyblue;'>Algoritmo N-Gram</h1>", unsafe_allow_html=True)
-    st.subheader('Términos Más relevantes extraidos de los textos en los comentarios')
-    st.markdown("<h4 style='text-align: center; color: skyblue;'>Terminos Más importantes ségun Algoritmo N-GRAM - Todos los Comentarios</h4>", unsafe_allow_html=True)
-    plot_text_ngrams(df=data_table)
-    st.markdown("<h4 style='text-align: center; color: darkgreen;'>Terminos Más importantes ségun Algoritmo N-GRAM - Comentarios Positivos</h4>", unsafe_allow_html=True)
-    plot_text_ngrams(df=positivo_table)
-    st.markdown("<h4 style='text-align: center; color: darkred;'>Terminos Más importantes ségun Algoritmo N-GRAM - Comentarios Negativos</h4>", unsafe_allow_html=True)
-    plot_text_ngrams(df=negativo_table)
-    st.markdown("<h4 style='text-align: center; color: gray;'>Terminos Más importantes ségun Algoritmo N-GRAM - Comentarios Neutros</h4>", unsafe_allow_html=True)
-    plot_text_ngrams(df=neutral_table)
-    # -----------------------------------------------------------------------------------------------------------
-    st.markdown("<h2 style='text-align: center; color: red;'>Algoritmo TF-IDF</h1>", unsafe_allow_html=True)
-    st.subheader('Vocabulario de Terminos Extraidos')
-    st.markdown("<h4 style='text-align: center; color: skyblue;'>Vocabulario de Todos los Textos</h4>", unsafe_allow_html=True)
-    termFrequencyVocab(data=data_table, tipo_sentimiento='totales')
-    st.markdown("<h4 style='text-align: center; color: darkgreen'>Vocabulario de Todos los Textos Positivos</h4>", unsafe_allow_html=True)
-    termFrequencyVocab(data=positivo_table, tipo_sentimiento='positivo')
-    st.markdown("<h4 style='text-align: center; color: darkred'>Vocabulario de Todos los Textos Negativos</h4>", unsafe_allow_html=True)
-    termFrequencyVocab(data=negativo, tipo_sentimiento='negativo')
-    st.markdown("<h4 style='text-align: center; color: gray'>Vocabulario de Todos los Textos Positivos Neutrales</h4>", unsafe_allow_html=True)
-    termFrequencyVocab(data=neutral, tipo_sentimiento='neutrales')
-    # -----------------------------------------------------------------------------------------------------------
-    st.markdown("<h2 style='text-align: center; color: skyblue;'>Distribución de Caracteres por Cada autor de Comentario</h1>", unsafe_allow_html=True)
-    st.markdown("<h4 style='text-align: center; color: skyblue;'>Distribución de Para Todos los comentarios</h4>", unsafe_allow_html=True)
-    text_dist(data=data_table)
-    st.markdown("<h4 style='text-align: center; color: darkgreen;'>Distribución de Para Todos los comentarios Positivos</h4>", unsafe_allow_html=True)
-    text_dist(data=positivo_table)
-    st.markdown("<h4 style='text-align: center; color: darkred;'>Distribución de Para Todos los comentarios Negativos</h4>", unsafe_allow_html=True)
-    text_dist(data=negativo)
-    st.markdown("<h4 style='text-align: center; color: gray;'>Distribución de Para Todos los comentarios Neutrales</h4>", unsafe_allow_html=True)
-    text_dist(data=neutral)
-    #-------------------------------------------------------------------------------------------------------------------
+        # Post owner.
+        owner_div = soup.select_one('#text-container a.yt-simple-endpoint.style-scope.yt-formatted-string')
+        owner_list = owner_div and owner_div.text
 
-    st.success('¡Análisis Finalizado con exito Teler!')
-    st.balloons()
+        # date of the post.
+        date_div = soup.select_one('#info #info-strings')
+        date_list = date_div and date_div.text
+
+        # date of the post.
+        comment_date_div = soup.select('#header-author a.yt-simple-endpoint.style-scope.yt-formatted-string')
+        comment_date_list = [cm.text for cm in comment_date_div]
+                                                                                    
+
+        # fecha de scrapping
+        today = date.today()
+
+        dataframe = pd.DataFrame(
+        {'TITULO': title,
+        'COMENTARIO': comment_list,
+        'AUTOR': author_list,
+        'LIKE': vote_list,
+        'PUBLICADO_POR': owner_list,
+        'FECHA_POST': date_list,
+        'FECHA_COMENTARIO': comment_date_list
+        })
+
+        dataframe['LIKE'] = dataframe['LIKE'].astype('int')
+        print(type(dataframe['LIKE']))
+        # ELIMIANNDO ESPACIONES ANTES Y DESPUES DE LOS TEXTOS
+        dataframe['TITULO'] = dataframe['TITULO'].str.strip()
+        dataframe['PUBLICADO_POR'] = dataframe['PUBLICADO_POR'].str.strip()
+        dataframe['FECHA_POST'] = dataframe['FECHA_POST'].str.strip()
+
+        # LIMPIENZA FECHA DE COMENTARIO
+        try:
+            dataframe['FECHA_COMENTARIO'] = dataframe['FECHA_COMENTARIO'].apply(limpieza_fecha_comentario)
+            dataframe['FECHA_COMENTARIO'] = dataframe['FECHA_COMENTARIO'].str.strip()
+        except AttributeError: 
+            st.write('EL Post no Cuenta con comentarios, por favor intentar con otro.')
+
+        dataframe['FECHA_EXTRACCION'] = today
+
+        try:
+            dataframe['COMENTARIO'] = dataframe['COMENTARIO'].apply(text_clean)
+            dataframe['COMENTARIO'] = dataframe['COMENTARIO'].apply(remove_emoji)
+            dataframe['COMENTARIO'] = dataframe['COMENTARIO'].str.strip()
+            dataframe['CARACTERES'] = dataframe['COMENTARIO'].apply(lambda x: len(x))
+            dataframe['CARACTERES'] = dataframe['CARACTERES'].astype('int')
+
+            dataframe['TEXTO_STOPWORD'] = dataframe['COMENTARIO']
+            dataframe['TEXTO_STOPWORD'] = dataframe['TEXTO_STOPWORD'].apply(removeStopwords)
+            dataframe['TEXTO_STOPWORD'] = dataframe['TEXTO_STOPWORD'].str.strip()
+        except AttributeError:
+            st.write('EL Post no Cuenta con comentarios, por favor intentar con otro.')
+
+        try:
+            # LIMPIANDO AUTOR
+            dataframe['AUTOR'] = dataframe['AUTOR'].apply(text_clean)
+            dataframe['AUTOR'] = dataframe['AUTOR'].apply(remove_emoji)
+            dataframe['AUTOR'] = dataframe['AUTOR'].str.lstrip()
+
+
+            # ELIMINANDO COMENTARIOS EN BLANCO
+            dataframe['LEN'] = dataframe['COMENTARIO'].str.len()
+            dataframe = dataframe[dataframe['LEN']>=1]
+            dataframe.drop(columns=['LEN'], inplace=True)
+        except AttributeError:
+            st.write('EL Post no Cuenta con comentarios, por favor intentar con otro.')
+
+        # exportación a excel
+        datestring = date.today().strftime('%Y-%m-%d')
+        clean_url = re.sub(r'https://www.youtube.com/watch', '', url)
+        clean_url = clean_url[3:]
+
+        # llave video
+        dataframe['LLAVE_VIDEO'] = clean_url
+        cols = list(dataframe.columns)
+        cols = [cols[-1]] + cols[:-1]
+        dataframe = dataframe[cols]
+
+        # POLARIDAD Y SENTIMIENTO
+        try:
+            dataframe['POLARIDAD'] = dataframe['COMENTARIO'].apply(spanish_sentiment)
+            dataframe['POLARIDAD'] = dataframe['POLARIDAD'].astype('float')
+            dataframe['SENTIMIENTO'] = dataframe['POLARIDAD'].apply(sentimiento)
+        
+
+            positivo = dataframe[dataframe['SENTIMIENTO']=='POSITIVO']
+            negativo = dataframe[dataframe['SENTIMIENTO']=='NEGATIVO']
+            neutral = dataframe[dataframe['SENTIMIENTO']=='NEUTRAL']
+        except AttributeError:
+            st.write('EL Post no Cuenta con comentarios, por favor intentar con otro.')
+
+        try:
+            dataframe['NUMERIC_SENTIMENT'] = dataframe['POLARIDAD'].apply(getSentiment)
+        except AttributeError:
+            st.write('EL Post no Cuenta con comentarios, por favor intentar con otro.')
+
+        dataframe.to_excel('D:\\ComentarioYoutube\\{0}'.format('comentarios_youtube' +'_'+clean_url +'_'+datestring + '.xlsx'), index=False)
+        file_size = os.stat('D:\\ComentarioYoutube\\{0}'.format('comentarios_youtube' +'_'+clean_url +'_'+datestring + '.xlsx'))
+        print("Size of file :", file_size.st_size, "bytes")
+        return dataframe, positivo, neutral, negativo
+
+
+    # Extrayendo datos segregados por sentimiento y transofrmandolas a variables de entorno.
+    DATA, POSITIVO, NEUTRAL, NEGATIVO = ScrapComment(url=url)
+
+
+    def streamlitWebAPP(dataframe, positivo, negativo, neutral):
+        st.write('')
+        st.markdown("<h2 style='text-align: center; color: yellow;'>TABLA DE COMENTARIOS</h1>", unsafe_allow_html=True)
+        try:
+            # Titulo de video
+            titulo_video = dataframe['TITULO']
+            titulo_video = pd.DataFrame(titulo_video)
+            titulo_video = titulo_video.iloc[0]['TITULO']
+            st.subheader('TITULO DEL VIDEO')
+            st.write(titulo_video)
+        except IndexError:
+            st.write('EL Post no Cuenta con comentarios, por favor intentar con otro.')
+        # ----------------------------------------------------------------------------------------------------------------------------
+        # Tabla de todos los datos
+        try:
+            data_table = dataframe.drop(columns=['LLAVE_VIDEO', 'TITULO'])
+            st.dataframe(data_table.head(15),10000,10000)
+            st.write('Número de Comentarios extraidos: ', len(data_table))
+        except ValueError:
+                st.write('No existen Comentarios')
+        except AttributeError:
+                st.write('No existen comenatarios')
+
+        # Tabla de todos los datos positivos
+        try:
+            positivo_table = positivo.drop(columns=['LLAVE_VIDEO', 'TITULO'])
+            st.dataframe(positivo_table.head(15),10000,10000)
+            st.write('Número de Comentarios positivos extraidos: ', len(positivo_table))
+        except ValueError:
+                st.write('No existen Comentarios positivos')
+        except AttributeError:
+                st.write('No existen comenatarios positivos')
+
+        # Tabla de todos los datos negativos
+        try:
+            negativo_table = negativo.drop(columns=['LLAVE_VIDEO', 'TITULO'])
+            st.dataframe(negativo_table.head(15),10000,10000)
+            st.write('Número de Comentarios negativo extraidos: ', len(negativo_table))
+        except ValueError:
+                st.write('No existen Comentarios negativos')
+        except AttributeError:
+                st.write('No existen comenatarios negativos')
+
+        # Tabla de todos los datos neutrakes
+        try:
+            neutral_table = neutral.drop(columns=['LLAVE_VIDEO', 'TITULO'])
+            st.dataframe(neutral_table.head(15),10000,10000)
+            st.write('Número de Comentarios neutrales extraidos: ', len(neutral_table))
+        except ValueError:
+                st.write('No existen Comentarios neutrales')
+        except AttributeError:
+                st.write('No existen comenatarios neutrales')
+        
+        # ----------------------------------------------------------------------------------------------------------------------------
+        try:
+            st.write('Comentario con Más Likes')
+            st.write(max(dataframe.LIKE))
+        except ValueError:
+                st.write('Ningún comentario tienen Like')
+        except AttributeError:
+                st.write('Ningún Comentario tiene  Like')
+
+        # ----------------------------------------------------------------------------------------------------------------------------
+        # Habilitar botón para descargar el archivo
+        df_xlsx = to_excel(dataframe)
+        # exportación a excel
+        datestring = date.today().strftime('%Y-%m-%d')
+        clean_url = re.sub(r'https://www.youtube.com/watch', '', url)
+        clean_url = clean_url[3:]
+        st.download_button(label='📥 DESCARGAR ARCHIVO COMPLETO',
+                                    data=df_xlsx ,
+                                    file_name= 'comentarios_youtube' +'_'+clean_url +'_'+datestring + '.xlsx')
+        # ----------------------------------------------------------------------------------------------------------------------------
+        # # show statistics on the data
+        st.write(dataframe.describe())
+            
+        # ----------------------------------------------------------------------------------------------------------------------------
+        st.markdown("<h2 style='text-align: center; color: yellow;'>Comentarios que contienen 'Me Gusta'</h1>", unsafe_allow_html=True)
+        #Bar Chart
+        st.bar_chart(data=dataframe['LIKE'])
+        # ----------------------------------------------------------------------------------------------------------------------------
+        # Likes por comentario
+        like_barplot = sns.barplot(x="AUTOR", y="LIKE", data=data_table, palette='bright')
+        plt.title('LIKES', color='black')
+        plt.xlabel('Usuario Youtube')
+        plt.xticks(rotation=90)
+        st.pyplot()
+
+        # ----------------------------------------------------------------------------------------------------------------------------
+        st.markdown("<h2 style='text-align: center; color: yellow;'>Algoritmos para Análisis de Sentimientos en los Datos</h1>", unsafe_allow_html=True)
+        st.subheader('Conteo de caracteres por comentario')
+        color_sentimiento = ['red', 'green', 'gray']
+        sns.countplot(x='SENTIMIENTO',data=data_table)
+        plt.title('Sentimientos de Comentarios', color='black', size=18)
+        st.pyplot()
+        # ----------------------------------------------------------------------------------------------------------------------------
+        st.subheader('Usuarios con más Comentarios')
+        st.write('Usuarios con Para todos los Comentarios')
+        popular_users(data=data_table)
+        st.write('Usuarios con Para todos los Comentarios Positivos')
+        popular_users(data=positivo_table)
+        st.write('Usuarios con Para todos los Comentarios Negativos')
+        popular_users(data=negativo_table)
+        st.write('Usuarios con Para todos los Comentarios Neutrales')
+        popular_users(data=neutral_table)
+        # ----------------------------------------------------------------------------------------------------------------------------
+        st.markdown("<h2 style='text-align: center; color: red;'>Word Cloud- Nube de Palabras</h1>", unsafe_allow_html=True)
+        st.subheader('Palabras que más se repiten en los comentarios')
+        # Generador de WordCloud
+        st.markdown("<h4 style='text-align: center; color: skyblue;'>Word Cloud- Todos los Comentarios</h4>", unsafe_allow_html=True)
+        wordCloudGenerator(data=data_table, background_color='navy')
+        st.markdown("<h4 style='text-align: center; color: dakrgreen;'>Word Cloud- Todos los Comentarios Positivos</h4>", unsafe_allow_html=True)
+        wordCloudGenerator(data=positivo_table, background_color='darkgreen')
+        st.markdown("<h4 style='text-align: center; color: darkred;'>Word Cloud- Todos los Comentarios Negativos</h4>", unsafe_allow_html=True)
+        wordCloudGenerator(data=negativo_table, background_color='darkred')
+        st.markdown("<h4 style='text-align: center; color: gray;'>Word Cloud- Todos los Comentarios Neutrales</h4>", unsafe_allow_html=True)
+        wordCloudGenerator(data=neutral_table, background_color='gray')
+        # ----------------------------------------------------------------------------------------------------------------------------
+        st.markdown("<h2 style='text-align: center; color: skyblue;'>Algoritmo N-Gram</h1>", unsafe_allow_html=True)
+        st.subheader('Términos Más relevantes extraidos de los textos en los comentarios')
+        st.markdown("<h4 style='text-align: center; color: skyblue;'>Terminos Más importantes ségun Algoritmo N-GRAM - Todos los Comentarios</h4>", unsafe_allow_html=True)
+        plot_text_ngrams(df=data_table)
+        st.markdown("<h4 style='text-align: center; color: darkgreen;'>Terminos Más importantes ségun Algoritmo N-GRAM - Comentarios Positivos</h4>", unsafe_allow_html=True)
+        plot_text_ngrams(df=positivo_table)
+        st.markdown("<h4 style='text-align: center; color: darkred;'>Terminos Más importantes ségun Algoritmo N-GRAM - Comentarios Negativos</h4>", unsafe_allow_html=True)
+        plot_text_ngrams(df=negativo_table)
+        st.markdown("<h4 style='text-align: center; color: gray;'>Terminos Más importantes ségun Algoritmo N-GRAM - Comentarios Neutros</h4>", unsafe_allow_html=True)
+        plot_text_ngrams(df=neutral_table)
+        # -----------------------------------------------------------------------------------------------------------
+        st.markdown("<h2 style='text-align: center; color: red;'>Algoritmo TF-IDF</h1>", unsafe_allow_html=True)
+        st.subheader('Vocabulario de Terminos Extraidos')
+        st.markdown("<h4 style='text-align: center; color: skyblue;'>Vocabulario de Todos los Textos</h4>", unsafe_allow_html=True)
+        termFrequencyVocab(data=data_table, tipo_sentimiento='totales')
+        st.markdown("<h4 style='text-align: center; color: darkgreen'>Vocabulario de Todos los Textos Positivos</h4>", unsafe_allow_html=True)
+        termFrequencyVocab(data=positivo_table, tipo_sentimiento='positivo')
+        st.markdown("<h4 style='text-align: center; color: darkred'>Vocabulario de Todos los Textos Negativos</h4>", unsafe_allow_html=True)
+        termFrequencyVocab(data=negativo, tipo_sentimiento='negativo')
+        st.markdown("<h4 style='text-align: center; color: gray'>Vocabulario de Todos los Textos Positivos Neutrales</h4>", unsafe_allow_html=True)
+        termFrequencyVocab(data=neutral, tipo_sentimiento='neutrales')
+        # -----------------------------------------------------------------------------------------------------------
+        st.markdown("<h2 style='text-align: center; color: skyblue;'>Distribución de Caracteres por Cada autor de Comentario</h1>", unsafe_allow_html=True)
+        st.markdown("<h4 style='text-align: center; color: skyblue;'>Distribución de Para Todos los comentarios</h4>", unsafe_allow_html=True)
+        text_dist(data=data_table)
+        st.markdown("<h4 style='text-align: center; color: darkgreen;'>Distribución de Para Todos los comentarios Positivos</h4>", unsafe_allow_html=True)
+        text_dist(data=positivo_table)
+        st.markdown("<h4 style='text-align: center; color: darkred;'>Distribución de Para Todos los comentarios Negativos</h4>", unsafe_allow_html=True)
+        text_dist(data=negativo)
+        st.markdown("<h4 style='text-align: center; color: gray;'>Distribución de Para Todos los comentarios Neutrales</h4>", unsafe_allow_html=True)
+        text_dist(data=neutral)
+        #-------------------------------------------------------------------------------------------------------------------
+
+        st.success('¡Análisis Finalizado con exito Teler!')
+        st.balloons()
 
 if __name__ == "__main__":
-    ScrapComment(url=url)
-    try:
+    
+    if control == True:
+        ScrapComment(url=url)
         streamlitWebAPP(dataframe=DATA, positivo=POSITIVO, negativo=NEGATIVO, neutral=NEUTRAL)
-    except ValueError:
-        st.write('No Existen Comentarios Teler :(')
-
+        
 ############### TIEMPO DE EJECUCIÓN TOTAL DEL PROGRAMA ######################
 
 print('')
+control = False
 end_time = time.time()
 print(f'TIEMPO DE EJECUCIÓN TOTAL DEL PROGRAMA: {end_time - start_time} segundos.')
